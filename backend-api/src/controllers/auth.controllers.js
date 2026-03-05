@@ -1,134 +1,150 @@
 import { pool } from '../db.js';
+import bcrypt from 'bcrypt';
 
-// Verificar credenciales de login
+const generateToken = (user) => {
+  return Buffer.from(JSON.stringify({
+    userId: user.id,
+    username: user.username,
+    role_id: user.role_id,
+    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+  })).toString('base64');
+};
+
+const sanitizeUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  role_id: user.role_id
+});
+
+// Helper function to verify password with bcrypt
+// Includes fallback for legacy plain-text passwords (migration path)
+const checkPassword = async (inputPassword, storedPassword) => {
+  try {
+    // Try bcrypt comparison first
+    return await bcrypt.compare(inputPassword, storedPassword);
+  } catch (error) {
+    // Fallback for legacy plain-text passwords during migration period
+    console.warn('Password comparison fallback used - consider migrating to bcrypt');
+    return inputPassword === storedPassword;
+  }
+};
+
+// Login endpoint
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
     
+    // Validate input
     if (!username || !password) {
-      return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
+      return res.status(400).json({ message: 'Usuario y contraseña requeridos' });
     }
     
-    // Buscar usuario por username
-    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    // Find user
+    const { rows } = await pool.query(
+      'SELECT * FROM users WHERE username = $1',
+      [username.trim()]
+    );
     
     if (rows.length === 0) {
-      return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({ message: 'Credenciales incorrectas' });
     }
     
     const user = rows[0];
     
-    // Verificar contraseña (comparación simple, en producción usar bcrypt)
-    // Por ahora aceptamos 'admin', '123456' o cualquier contraseña que coincida con el hash
-    const isValidPassword = password === 'admin' || 
-                           password === '123456' || 
-                           password === user.password_hash ||
-                           user.password_hash.includes('hashplaceholder');
+    // Verify password
+    const isValidPassword = await checkPassword(password, user.password_hash);
     
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({ message: 'Credenciales incorrectas' });
     }
     
-    // Generar token simple (en producción usar JWT)
-    const token = Buffer.from(JSON.stringify({ 
-      userId: user.id, 
-      username: user.username,
-      role_id: user.role_id 
-    })).toString('base64');
+    // Generate token
+    const token = generateToken(user);
     
     res.json({
       token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role_id: user.role_id,
-      },
+      user: sanitizeUser(user)
     });
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error('Login error:', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 };
 
-// Verificar contraseña de un usuario (para confirmar cambios)
+// Verify password endpoint
 export const verifyPassword = async (req, res) => {
   try {
     const { userId, password } = req.body;
     
     if (!userId || !password) {
-      return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
+      return res.status(400).json({ message: 'Datos requeridos' });
     }
     
-    // Buscar usuario por ID
-    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    const { rows } = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [parseInt(userId)]
+    );
     
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
     
-    const user = rows[0];
-    
-    // Verificar contraseña
-    const isValidPassword = password === 'admin' || 
-                           password === '123456' || 
-                           password === user.password_hash ||
-                           user.password_hash.includes('hashplaceholder');
-    
-    if (!isValidPassword) {
+    if (!await checkPassword(password, rows[0].password_hash)) {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
     }
     
-    res.json({ valid: true, message: 'Contraseña verificada correctamente' });
+    res.json({ valid: true, message: 'Contraseña verificada' });
   } catch (error) {
-    console.error('Error al verificar contraseña:', error);
-    res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Verify password error:', error);
+    res.status(500).json({ message: 'Error al verificar contraseña' });
   }
 };
 
-// Cambiar contraseña de un usuario
+// Change password endpoint
 export const changePassword = async (req, res) => {
   try {
     const { userId, currentPassword, newPassword } = req.body;
     
+    // Validate input
     if (!userId || !currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
     
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
     }
     
-    // Buscar usuario por ID
-    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    // Get current password
+    const { rows } = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [parseInt(userId)]
+    );
     
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
     
-    const user = rows[0];
-    
-    // Verificar contraseña actual
-    const isValidPassword = currentPassword === 'admin' || 
-                           currentPassword === '123456' || 
-                           currentPassword === user.password_hash ||
-                           user.password_hash.includes('hashplaceholder');
-    
-    if (!isValidPassword) {
+    // Verify current password
+    if (!await checkPassword(currentPassword, rows[0].password_hash)) {
       return res.status(401).json({ message: 'La contraseña actual es incorrecta' });
     }
     
-    // Actualizar contraseña (guardar como texto plano por simplicidad, en producción usar bcrypt)
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newPassword, userId]);
+    // Hash new password and update
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedPassword, parseInt(userId)]
+    );
     
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {
-    console.error('Error al cambiar contraseña:', error);
-    res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Error al cambiar contraseña' });
   }
 };
 
-// Obtener información del usuario actual
+// Get current user info
 export const getMe = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -137,7 +153,10 @@ export const getMe = async (req, res) => {
       return res.status(400).json({ message: 'ID de usuario requerido' });
     }
     
-    const { rows } = await pool.query('SELECT id, username, email, role_id, created_at, updated_at FROM users WHERE id = $1', [userId]);
+    const { rows } = await pool.query(
+      'SELECT id, username, email, role_id, created_at, updated_at FROM users WHERE id = $1',
+      [parseInt(userId)]
+    );
     
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -145,7 +164,7 @@ export const getMe = async (req, res) => {
     
     res.json(rows[0]);
   } catch (error) {
-    console.error('Error al obtener usuario:', error);
-    res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Get me error:', error);
+    res.status(500).json({ message: 'Error al obtener usuario' });
   }
 };

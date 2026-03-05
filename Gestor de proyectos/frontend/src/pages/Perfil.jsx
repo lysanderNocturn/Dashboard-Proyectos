@@ -25,6 +25,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Avatar,
+  Fade,
+  Zoom,
+  Tooltip,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -36,10 +40,14 @@ import {
   Badge as BadgeIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
+  AdminPanelSettings as AdminIcon,
+  CalendarToday as CalendarIcon,
+  Update as UpdateIcon,
+  Security as SecurityIcon,
 } from '@mui/icons-material';
 
 const Perfil = () => {
-  const { user, login } = useAuth();
+  const { user, logout } = useAuth();
   const [usuario, setUsuario] = useState(null);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +78,7 @@ const Perfil = () => {
   // Estados para diálogo de confirmación
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [pendingAction, setPendingAction] = useState(null); // 'profile' | 'password'
+  const [pendingAction, setPendingAction] = useState(null);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Cargar datos del usuario y roles
@@ -80,23 +88,60 @@ const Perfil = () => {
         setIsLoading(true);
         setError(null);
         
+        console.log('Cargando datos del perfil...');
+        
         // Cargar roles disponibles
-        const rolesResponse = await api.get('/roles');
-        setRoles(rolesResponse.data);
+        try {
+          const rolesResponse = await api.get('/roles');
+          setRoles(rolesResponse.data);
+        } catch (err) {
+          console.warn('No se pudieron cargar los roles:', err);
+          setRoles([]);
+        }
         
         // Si tenemos el usuario del contexto, cargar sus datos completos
         if (user?.id) {
-          const userData = await usuariosService.getUsuarioById(user.id);
-          const userInfo = Array.isArray(userData) ? userData[0] : userData;
-          setUsuario(userInfo);
-          setEditData({
-            username: userInfo.username || '',
-            email: userInfo.email || '',
-            role_id: userInfo.role_id || '',
-          });
+          console.log('Cargando usuario con ID:', user.id);
+          try {
+            const userData = await usuariosService.getUsuarioById(user.id);
+            console.log('Datos del usuario recibidos:', userData);
+            
+            // Manejar diferentes formatos de respuesta
+            const userInfo = Array.isArray(userData) ? userData[0] : userData;
+            
+            if (userInfo && userInfo.id) {
+              setUsuario(userInfo);
+              setEditData({
+                username: userInfo.username || '',
+                email: userInfo.email || '',
+                role_id: userInfo.role_id || '',
+              });
+            } else {
+              throw new Error('Datos de usuario no válidos');
+            }
+          } catch (err) {
+            console.error('Error al cargar usuario:', err);
+            // Si falla la carga, usar los datos del contexto
+            if (user) {
+              setUsuario({
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role_id: user.role_id,
+                created_at: new Date().toISOString(),
+              });
+              setEditData({
+                username: user.username || '',
+                email: user.email || '',
+                role_id: user.role_id || '',
+              });
+            }
+          }
+        } else {
+          setError('No se encontró información del usuario en la sesión');
         }
       } catch (err) {
-        setError('Error al cargar los datos del perfil');
+        setError('Error al cargar los datos del perfil: ' + (err.message || 'Error desconocido'));
         console.error(err);
       } finally {
         setIsLoading(false);
@@ -114,6 +159,7 @@ const Perfil = () => {
       email: usuario?.email || '',
       role_id: usuario?.role_id || '',
     });
+    setError(null);
   };
 
   const handleCancelEdit = () => {
@@ -123,6 +169,7 @@ const Perfil = () => {
       email: usuario?.email || '',
       role_id: usuario?.role_id || '',
     });
+    setError(null);
   };
 
   const handleSaveProfileClick = () => {
@@ -130,8 +177,17 @@ const Perfil = () => {
       setError('El nombre de usuario y email son obligatorios');
       return;
     }
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editData.email)) {
+      setError('El formato del email no es válido');
+      return;
+    }
+    
     setPendingAction('profile');
     setIsConfirmDialogOpen(true);
+    setError(null);
   };
 
   const handleSaveProfile = async () => {
@@ -139,28 +195,42 @@ const Perfil = () => {
       setIsLoading(true);
       setError(null);
       
+      if (!usuario?.id) {
+        throw new Error('No se encontró el ID del usuario');
+      }
+      
       // Actualizar el perfil
       await usuariosService.updateUsuario(usuario.id, {
         username: editData.username,
         email: editData.email,
-        role_id: editData.role_id,
+        role_id: editData.role_id || null,
       });
       
       // Actualizar datos locales
-      const updatedUser = await usuariosService.getUsuarioById(usuario.id);
-      const userInfo = Array.isArray(updatedUser) ? updatedUser[0] : updatedUser;
-      setUsuario(userInfo);
+      try {
+        const updatedUser = await usuariosService.getUsuarioById(usuario.id);
+        const userInfo = Array.isArray(updatedUser) ? updatedUser[0] : updatedUser;
+        setUsuario(userInfo);
+      } catch (err) {
+        // Si falla la recarga, actualizar con los datos locales
+        setUsuario({ ...usuario, ...editData });
+      }
       
       // Actualizar el contexto de autenticación
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      const newUserData = { ...currentUser, username: userInfo.username, email: userInfo.email };
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const newUserData = { 
+        ...currentUser, 
+        username: editData.username, 
+        email: editData.email,
+        role_id: editData.role_id 
+      };
       localStorage.setItem('user', JSON.stringify(newUserData));
       
       setIsEditing(false);
       setSuccessMessage('Perfil actualizado correctamente');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Error al actualizar el perfil. Verifica que el email no esté en uso.');
+      setError('Error al actualizar el perfil: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -186,6 +256,7 @@ const Perfil = () => {
     }
     setPendingAction('password');
     setIsConfirmDialogOpen(true);
+    setError(null);
   };
 
   const handleSavePassword = async () => {
@@ -227,6 +298,7 @@ const Perfil = () => {
     }
     
     try {
+      setIsLoading(true);
       // Verificar que la contraseña ingresada sea la del usuario
       await api.post('/auth/verify-password', {
         userId: usuario.id,
@@ -249,281 +321,494 @@ const Perfil = () => {
   };
 
   const getRoleName = (roleId) => {
+    if (!roleId) return 'Sin rol asignado';
     const role = roles.find(r => r.id === roleId);
-    return role?.name || 'Sin rol asignado';
+    return role?.name || 'Rol desconocido';
+  };
+
+  const getRoleColor = (roleId) => {
+    const role = roles.find(r => r.id === roleId);
+    const roleName = role?.name?.toLowerCase() || '';
+    if (roleName.includes('admin')) return 'error';
+    if (roleName.includes('gerente')) return 'warning';
+    if (roleName.includes('supervisor')) return 'info';
+    return 'default';
+  };
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.substring(0, 2).toUpperCase();
   };
 
   if (isLoading && !usuario) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+        <CircularProgress size={60} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, margin: '0 auto' }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <PersonIcon fontSize="large" />
-        Mi Perfil
-        <Chip label={getRoleName(usuario?.role_id)} color="primary" sx={{ ml: 1 }} />
-      </Typography>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-          {successMessage}
-        </Alert>
-      )}
+    <Fade in>
+      <Box sx={{ p: 3, maxWidth: 1000, margin: '0 auto' }}>
+        {/* Header con gradiente */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 4, 
+            mb: 4, 
+            background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
+            color: 'white',
+            borderRadius: 4,
+            textAlign: 'center'
+          }}
+        >
+          <Zoom in>
+            <Avatar 
+              sx={{ 
+                width: 100, 
+                height: 100, 
+                mx: 'auto', 
+                mb: 2,
+                bgcolor: 'rgba(255,255,255,0.2)',
+                fontSize: 40,
+                border: '4px solid rgba(255,255,255,0.3)'
+              }}
+            >
+              {getInitials(usuario?.username)}
+            </Avatar>
+          </Zoom>
+          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
+            {usuario?.username || 'Usuario'}
+          </Typography>
+          <Chip 
+            label={getRoleName(usuario?.role_id)} 
+            color={getRoleColor(usuario?.role_id)}
+            sx={{ 
+              bgcolor: 'rgba(255,255,255,0.2)', 
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              '& .MuiChip-label': { color: 'white' }
+            }}
+            icon={<AdminIcon sx={{ color: 'white !important' }} />}
+          />
+        </Paper>
 
-      <Grid container spacing={3}>
-        {/* Información del Perfil */}
-        <Grid item xs={12} md={8}>
-          <Card elevation={3}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <BadgeIcon />
-                  Información del Perfil
-                </Typography>
-                {!isEditing ? (
-                  <Button
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    onClick={handleEditClick}
-                  >
-                    Editar
-                  </Button>
-                ) : (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+        {/* Mensajes */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setSuccessMessage(null)}>
+            {successMessage}
+          </Alert>
+        )}
+
+        <Grid container spacing={3}>
+          {/* Información del Perfil */}
+          <Grid item xs={12} md={8}>
+            <Card elevation={3} sx={{ borderRadius: 3, height: '100%' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <BadgeIcon color="primary" />
+                    Información del Perfil
+                  </Typography>
+                  {!isEditing ? (
                     <Button
                       variant="outlined"
-                      color="error"
-                      startIcon={<CancelIcon />}
-                      onClick={handleCancelEdit}
+                      startIcon={<EditIcon />}
+                      onClick={handleEditClick}
+                      sx={{ borderRadius: 2 }}
                     >
-                      Cancelar
+                      Editar Perfil
                     </Button>
-                    <Button
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSaveProfileClick}
-                    >
-                      Guardar
-                    </Button>
-                  </Box>
-                )}
-              </Box>
-              
-              <Divider sx={{ mb: 3 }} />
-              
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Nombre de Usuario"
-                    value={isEditing ? editData.username : usuario?.username || ''}
-                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-                    disabled={!isEditing}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PersonIcon />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={isEditing ? editData.email : usuario?.email || ''}
-                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                    disabled={!isEditing}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth disabled={!isEditing}>
-                    <InputLabel id="role-select-label">Rol</InputLabel>
-                    <Select
-                      labelId="role-select-label"
-                      value={isEditing ? editData.role_id : usuario?.role_id || ''}
-                      label="Rol"
-                      onChange={(e) => setEditData({ ...editData, role_id: e.target.value })}
-                    >
-                      <MenuItem value="">
-                        <em>Sin rol asignado</em>
-                      </MenuItem>
-                      {roles.map((role) => (
-                        <MenuItem key={role.id} value={role.id}>
-                          {role.name}
+                  ) : (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<CancelIcon />}
+                        onClick={handleCancelEdit}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="contained"
+                        startIcon={<SaveIcon />}
+                        onClick={handleSaveProfileClick}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        Guardar
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+                
+                <Divider sx={{ mb: 3 }} />
+                
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Nombre de Usuario"
+                      value={isEditing ? editData.username : usuario?.username || ''}
+                      onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                      disabled={!isEditing}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PersonIcon color={isEditing ? "primary" : "action"} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Correo Electrónico"
+                      type="email"
+                      value={isEditing ? editData.email : usuario?.email || ''}
+                      onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                      disabled={!isEditing}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <EmailIcon color={isEditing ? "primary" : "action"} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth disabled={!isEditing}>
+                      <InputLabel id="role-select-label">Rol del Usuario</InputLabel>
+                      <Select
+                        labelId="role-select-label"
+                        value={isEditing ? editData.role_id : usuario?.role_id || ''}
+                        label="Rol del Usuario"
+                        onChange={(e) => setEditData({ ...editData, role_id: e.target.value })}
+                        startAdornment={
+                          <InputAdornment position="start">
+                            <AdminIcon color={isEditing ? "primary" : "action"} />
+                          </InputAdornment>
+                        }
+                        sx={{ borderRadius: 2 }}
+                      >
+                        <MenuItem value="">
+                          <em>Sin rol asignado</em>
                         </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                        {roles.map((role) => (
+                          <MenuItem key={role.id} value={role.id}>
+                            {role.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
 
-        {/* Acciones del Perfil */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LockIcon />
-                Seguridad
-              </Typography>
-              
-              <Divider sx={{ mb: 2 }} />
-              
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<LockIcon />}
-                onClick={() => setIsPasswordDialogOpen(true)}
-                sx={{ mb: 2 }}
-              >
-                Cambiar Contraseña
-              </Button>
-              
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                ID de Usuario: {usuario?.id}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Creado: {usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString() : 'N/A'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Diálogo para cambiar contraseña */}
-      <Dialog open={isPasswordDialogOpen} onClose={() => setIsPasswordDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Cambiar Contraseña</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Contraseña Actual"
-                type={showPasswords.current ? 'text' : 'password'}
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}>
-                        {showPasswords.current ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Nueva Contraseña"
-                type={showPasswords.new ? 'text' : 'password'}
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}>
-                        {showPasswords.new ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Confirmar Nueva Contraseña"
-                type={showPasswords.confirm ? 'text' : 'password'}
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}>
-                        {showPasswords.confirm ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
+                {/* Información adicional */}
+                <Box sx={{ mt: 4, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Información de la Cuenta
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary">
+                          Creado: {usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString('es-ES', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          }) : 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <UpdateIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary">
+                          Actualizado: {usuario?.updated_at ? new Date(usuario.updated_at).toLocaleDateString('es-ES', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          }) : 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <PersonIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary">
+                          ID de Usuario: {usuario?.id || 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsPasswordDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handlePasswordChangeClick}>
-            Continuar
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      {/* Diálogo de confirmación con contraseña */}
-      <Dialog open={isConfirmDialogOpen} onClose={() => setIsConfirmDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <LockIcon color="warning" />
-          Confirmar Cambios
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Para autorizar los cambios, por favor ingresa tu contraseña actual:
-          </Typography>
-          <TextField
-            fullWidth
-            label="Contraseña"
-            type={showConfirmPassword ? 'text' : 'password'}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            autoFocus
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
+          {/* Acciones del Perfil */}
+          <Grid item xs={12} md={4}>
+            <Card elevation={3} sx={{ borderRadius: 3, height: '100%' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SecurityIcon color="primary" />
+                  Seguridad
+                </Typography>
+                
+                <Divider sx={{ mb: 3 }} />
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<LockIcon />}
+                    onClick={() => setIsPasswordDialogOpen(true)}
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      py: 1.5,
+                      borderRadius: 2
+                    }}
+                  >
+                    <Box sx={{ textAlign: 'left' }}>
+                      <Typography variant="body1" fontWeight="medium">
+                        Cambiar Contraseña
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Actualiza tu contraseña de acceso
+                      </Typography>
+                    </Box>
+                  </Button>
+
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="error"
+                    onClick={logout}
+                    sx={{ 
+                      mt: 'auto',
+                      py: 1.5,
+                      borderRadius: 2
+                    }}
+                  >
+                    Cerrar Sesión
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Diálogo para cambiar contraseña */}
+        <Dialog 
+          open={isPasswordDialogOpen} 
+          onClose={() => {
+            setIsPasswordDialogOpen(false);
+            setPasswordData({
+              currentPassword: '',
+              newPassword: '',
+              confirmPassword: '',
+            });
+            setError(null);
+          }} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <LockIcon />
+            Cambiar Contraseña
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Contraseña Actual"
+                  type={showPasswords.current ? 'text' : 'password'}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockIcon color="action" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={showPasswords.current ? 'Ocultar' : 'Mostrar'}>
+                          <IconButton onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}>
+                            {showPasswords.current ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Nueva Contraseña"
+                  type={showPasswords.new ? 'text' : 'password'}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  helperText="Mínimo 6 caracteres"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={showPasswords.new ? 'Ocultar' : 'Mostrar'}>
+                          <IconButton onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}>
+                            {showPasswords.new ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Confirmar Nueva Contraseña"
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={showPasswords.confirm ? 'Ocultar' : 'Mostrar'}>
+                          <IconButton onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}>
+                            {showPasswords.confirm ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => {
+                setIsPasswordDialogOpen(false);
+                setPasswordData({
+                  currentPassword: '',
+                  newPassword: '',
+                  confirmPassword: '',
+                });
+                setError(null);
+              }}
+              color="inherit"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handlePasswordChangeClick}
+              startIcon={<SaveIcon />}
+            >
+              Continuar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Diálogo de confirmación con contraseña */}
+        <Dialog 
+          open={isConfirmDialogOpen} 
+          onClose={() => {
             setIsConfirmDialogOpen(false);
             setConfirmPassword('');
             setPendingAction(null);
-          }}>
-            Cancelar
-          </Button>
-          <Button variant="contained" color="primary" onClick={handleConfirmAction} disabled={isLoading}>
-            {isLoading ? <CircularProgress size={24} /> : 'Confirmar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          }} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
+            <SecurityIcon />
+            Confirmar Cambios
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Para autorizar los cambios, por favor ingresa tu contraseña actual:
+            </Typography>
+            <TextField
+              fullWidth
+              label="Contraseña"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoFocus
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title={showConfirmPassword ? 'Ocultar' : 'Mostrar'}>
+                      <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => {
+                setIsConfirmDialogOpen(false);
+                setConfirmPassword('');
+                setPendingAction(null);
+              }}
+              color="inherit"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={handleConfirmAction} 
+              disabled={isLoading}
+              startIcon={isLoading ? <CircularProgress size={20} /> : null}
+            >
+              Confirmar
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </Fade>
   );
 };
 

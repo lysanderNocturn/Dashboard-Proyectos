@@ -9,23 +9,55 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  Person as PersonIcon,
+  Lock as LockIcon,
+} from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, error } = useAuth();
+  const { login, error: authError } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
 
+  const validateForm = () => {
+    if (!username.trim()) {
+      setLoginError('El usuario es requerido');
+      return false;
+    }
+    if (!password) {
+      setLoginError('La contraseña es requerida');
+      return false;
+    }
+    if (username.length < 3) {
+      setLoginError('El usuario debe tener al menos 3 caracteres');
+      return false;
+    }
+    if (password.length < 4) {
+      setLoginError('La contraseña debe tener al menos 4 caracteres');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     setLoginError(null);
 
     try {
-      await login(username, password);
+      await login(username.trim(), password);
       navigate('/dashboard');
     } catch (err) {
       setLoginError(err.message || 'Error al iniciar sesión');
@@ -41,29 +73,52 @@ const Login = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #b82020 0%, #855620 100%)',
+        background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
         p: 2,
       }}
     >
       <Paper
-        elevation={6}
+        elevation={8}
         sx={{
           p: 4,
-          maxWidth: 400,
+          maxWidth: 420,
           width: '100%',
-          borderRadius: 2,
+          borderRadius: 3,
+          animation: 'fadeIn 0.5s ease-out',
         }}
       >
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Gestor de Proyectos
-        </Typography>
-        <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 3 }}>
-          Inicia sesión para continuar
-        </Typography>
+        {/* Logo/Brand */}
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <Box
+            sx={{
+              width: 70,
+              height: 70,
+              borderRadius: 2,
+              bgcolor: 'primary.main',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 2,
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+            }}
+          >
+            GP
+          </Box>
+          <Typography variant="h4" component="h1" fontWeight="bold" color="primary">
+            Gestor de Proyectos
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Sistema de Planificación y Gestión
+          </Typography>
+        </Box>
 
-        {(loginError || error) && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {loginError || error}
+        {(loginError || authError) && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLoginError(null)}>
+            {loginError || authError}
           </Alert>
         )}
 
@@ -77,10 +132,19 @@ const Login = () => {
             onChange={(e) => setUsername(e.target.value)}
             required
             disabled={isLoading}
+            autoComplete="username"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
           />
+          
           <TextField
             label="Contraseña"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             variant="outlined"
             fullWidth
             margin="normal"
@@ -88,14 +152,43 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={isLoading}
+            autoComplete="current-password"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockIcon color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                    size="small"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
+          
           <Button
             type="submit"
             variant="contained"
             fullWidth
             size="large"
-            sx={{ mt: 2, mb: 2 }}
             disabled={isLoading}
+            sx={{
+              mt: 3,
+              mb: 2,
+              py: 1.5,
+              fontWeight: 'bold',
+              boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+              '&:hover': {
+                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+              },
+            }}
           >
             {isLoading ? (
               <CircularProgress size={24} color="inherit" />
@@ -105,9 +198,12 @@ const Login = () => {
           </Button>
         </form>
 
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
-          Sistema de gestión de proyectos institucionales
-        </Typography>
+        {/* Help text */}
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            Credenciales de prueba: admin / 123456
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );

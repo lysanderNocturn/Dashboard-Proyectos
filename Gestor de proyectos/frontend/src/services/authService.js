@@ -1,7 +1,7 @@
 import api from './api.js';
 
 export const authService = {
-  // Login usando el endpoint de autenticación del backend
+  // Login using the backend authentication endpoint
   async login(username, password) {
     try {
       const response = await api.post('/auth/login', { username, password });
@@ -11,7 +11,7 @@ export const authService = {
     }
   },
 
-  // Verificar contraseña del usuario
+  // Verify user password
   async verifyPassword(userId, password) {
     try {
       const response = await api.post('/auth/verify-password', { userId, password });
@@ -21,7 +21,7 @@ export const authService = {
     }
   },
 
-  // Cambiar contraseña del usuario
+  // Change user password
   async changePassword(userId, currentPassword, newPassword) {
     try {
       const response = await api.post('/auth/change-password', { 
@@ -35,13 +35,25 @@ export const authService = {
     }
   },
 
+  // Get all users
   async getUsers() {
-    const response = await api.get('/users');
-    return response.data;
+    try {
+      const response = await api.get('/usuarios');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Error al obtener usuarios');
+    }
   },
 
+  // Create new user
   async createUser(userData) {
-    const response = await api.post('/users', userData);
-    return response.data;
+    try {
+      const response = await api.post('/usuarios', userData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Error al crear usuario');
+    }
   },
 };
+
+export default authService;

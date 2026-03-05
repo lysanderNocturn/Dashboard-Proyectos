@@ -1,59 +1,141 @@
 import { pool } from '../db.js';
 
-export const getUsers = async (req, res) =>{
-    const {rows} = await pool.query('SELECT * FROM users');
-    res.json(rows);
-};
+// Optimize: Select only needed columns instead of SELECT *
+const USER_COLUMNS = 'id, username, email, role_id, created_at, updated_at';
+const PUBLIC_USER_COLUMNS = 'id, username, email, role_id';
 
-export const getUserById = async (req, res) =>{
-    const {id} = req.params;
-    const {rows} = await pool.query(`SELECT * FROM users WHERE id = $1`, [id])
-
-    if (rows.length === 0){
-        return res.status(404).json({message: "usuario no encontrado"});
-    }
-    res.json(rows);
-}; 
-
-export const createUser = async (req, res) =>{
-    try {
-    const data = req.body;
-    console.log(data);
-    const rows = await pool.query(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)`, [data.username, data.email, data.password_hash]);
-    return res.send(rows);
-    } catch (error) {
-        console.error(error); 
-        if (error?.code === '23505') {
-            return res.status(409).json({ message: "El usuario ya existe" });
-        }
-        return res.status(500).json({message: "Error al crear el usuario"});
-    }
-};
-
-export const deleteUser = async (req, res) =>{
-    const {id} = req.params
-    const {rows, rowCount} = await pool.query(`DELETE FROM users WHERE id = $1 RETURNING *`, [id]);
-    console.log({rows});
-    if (rowCount === 0){
-        return res.status(404).json({message: "usuario no encontrado"});
-    }
-    return res.sendStatus(204);
-};
-
-export const updateUser = async (req, res) =>{
-    try {
-    const {id} = req.params
-    const {username, email, role_id} = req.body;
-    const {rows, rowCount} = await pool.query(
-        `UPDATE users SET username = $1, email = $2, role_id = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *`, 
-        [username, email, role_id || null, id]
+export const getUsers = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${PUBLIC_USER_COLUMNS} FROM users ORDER BY username ASC`
     );
-    if (rowCount === 0){
-        return res.status(404).json({message: "usuario no encontrado"});
+    res.json(rows);
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ message: "Error al obtener usuarios" });
+  }
+};
+
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: "ID de usuario inválido" });
     }
-    return res.send(rows[0]);
-} catch (error) {
-    console.error(error);
-    return res.status(509).json({message: "ya existe un usuario con ese email"});
-}
+    
+    const { rows } = await pool.query(
+      `SELECT ${USER_COLUMNS} FROM users WHERE id = $1`,
+      [parseInt(id)]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error getting user by ID:', error);
+    res.status(500).json({ message: "Error al obtener usuario" });
+  }
+};
+
+export const createUser = async (req, res) => {
+  try {
+    const data = req.body;
+    
+    // Validate required fields
+    if (!data.username || !data.email || !data.password_hash) {
+      return res.status(400).json({ message: "Faltan campos requeridos" });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      return res.status(400).json({ message: "Formato de email inválido" });
+    }
+    
+    const { rows } = await pool.query(
+      `INSERT INTO users (username, email, password_hash) 
+       VALUES ($1, $2, $3) 
+       RETURNING id, username, email, created_at`,
+      [data.username.trim(), data.email.trim().toLowerCase(), data.password_hash]
+    );
+    
+    return res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    if (error?.code === '23505') {
+      const field = error.constraint?.includes('username') ? 'usuario' : 'email';
+      return res.status(409).json({ message: `El ${field} ya existe` });
+    }
+    return res.status(500).json({ message: "Error al crear usuario" });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: "ID de usuario inválido" });
+    }
+    
+    const { rowCount } = await pool.query(
+      'DELETE FROM users WHERE id = $1',
+      [parseInt(id)]
+    );
+    
+    if (rowCount === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    
+    return res.sendStatus(204);
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: "Error al eliminar usuario" });
+  }
+};
+
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, role_id } = req.body;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: "ID de usuario inválido" });
+    }
+    
+    // Validate required fields
+    if (!username?.trim() || !email?.trim()) {
+      return res.status(400).json({ message: "Usuario y email son requeridos" });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Formato de email inválido" });
+    }
+    
+    const { rows, rowCount } = await pool.query(
+      `UPDATE users 
+       SET username = $1, email = $2, role_id = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4 
+       RETURNING ${USER_COLUMNS}`,
+      [username.trim(), email.trim().toLowerCase(), role_id || null, parseInt(id)]
+    );
+    
+    if (rowCount === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    
+    return res.json(rows[0]);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    if (error?.code === '23505') {
+      const field = error.constraint?.includes('username') ? 'usuario' : 'email';
+      return res.status(409).json({ message: `El ${field} ya está en uso` });
+    }
+    return res.status(500).json({ message: "Error al actualizar usuario" });
+  }
 };

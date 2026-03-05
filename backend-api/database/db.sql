@@ -63,19 +63,38 @@ CREATE TABLE proyectos(
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL UNIQUE,
     descripcion TEXT,
+    objetivo TEXT,
+    meta_total DECIMAL(15, 2) DEFAULT 100,
+    duracion_anos INTEGER CHECK (duracion_anos >= 1 AND duracion_anos <= 3) DEFAULT 1,
+    medida_tipo VARCHAR(20) CHECK (medida_tipo IN ('cantidad', 'porcentaje')) DEFAULT 'porcentaje',
+    fecha_inicio DATE,
+    fecha_fin DATE,
     unidad_administrativa_id INTEGER REFERENCES unidad_administrativa(id) ON DELETE SET NULL,
     departamento_id INTEGER REFERENCES departamentos(id) ON DELETE SET NULL,
     accion_id INTEGER REFERENCES acciones(id) ON DELETE SET NULL,
     medida_id INTEGER REFERENCES medidas(id) ON DELETE SET NULL,
     evaluacion TEXT,
     ejes_id INTEGER REFERENCES ejes(id) ON DELETE SET NULL,
-    estado_actual VARCHAR(50) NOT NULL,
+    estado_actual VARCHAR(50) NOT NULL DEFAULT 'Activo',
     asignado_a INTEGER REFERENCES presupuestos(id) ON DELETE SET NULL,
     presupuesto_id INTEGER REFERENCES presupuestos(id) ON DELETE SET NULL,
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tabla para distribución de trimestres
+CREATE TABLE IF NOT EXISTS proyectos_trimestres (
+    id SERIAL PRIMARY KEY,
+    proyecto_id INTEGER REFERENCES proyectos(id) ON DELETE CASCADE,
+    ano INTEGER NOT NULL CHECK (ano >= 1 AND ano <= 3),
+    trimestre INTEGER NOT NULL CHECK (trimestre >= 1 AND trimestre <= 4),
+    meta DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    porcentaje DECIMAL(5, 2) NOT NULL DEFAULT 0 CHECK (porcentaje >= 0 AND porcentaje <= 100),
+    UNIQUE(proyecto_id, ano, trimestre)
+);
+
+CREATE INDEX IF NOT EXISTS idx_proyectos_trimestres_proyecto ON proyectos_trimestres(proyecto_id);
 
 CREATE TABLE actividades_planeadas (
     id SERIAL PRIMARY KEY,

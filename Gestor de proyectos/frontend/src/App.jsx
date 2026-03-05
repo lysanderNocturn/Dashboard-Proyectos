@@ -7,26 +7,42 @@ import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ProyectosCRUD from './pages/ProyectosCRUD.jsx';
+import UsuariosCRUD from './pages/UsuariosCRUD.jsx';
 import Perfil from './pages/Perfil.jsx';
+import AvanceTrimestral from './pages/AvanceTrimestral.jsx';
+import Reportes from './pages/Reportes.jsx';
+import Parametros from './pages/Parametros.jsx';
 import './App.css';
 
-// Tema con color tinto (estilo Morena)
+// Tema con color principal rojo vino/borgoña (#800020)
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#A52A2A', // Color tinto/borgoña tipo Morena
-      light: '#CD5C5C',
-      dark: '#800000',
+      main: '#800020',
+      light: '#a3405c',
+      dark: '#5c0017',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#D2691E', // Naranja tierra complementario
-      light: '#F4A460',
-      dark: '#8B4513',
+      main: '#722F37',
+      light: '#965058',
+      dark: '#4d1f25',
     },
     background: {
-      default: '#F5F5F5',
+      default: '#faf8f9',
       paper: '#FFFFFF',
+    },
+    error: {
+      main: '#c62828',
+    },
+    success: {
+      main: '#2e7d32',
+    },
+    warning: {
+      main: '#f57c00',
+    },
+    info: {
+      main: '#800020',
     },
   },
   typography: {
@@ -36,6 +52,29 @@ const theme = createTheme({
     },
     h5: {
       fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+  shape: {
+    borderRadius: 8,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 500,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
     },
   },
 });
@@ -59,6 +98,10 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="proyectos" element={<ProyectosCRUD />} />
+              <Route path="avance" element={<AvanceTrimestral />} />
+              <Route path="reportes" element={<Reportes />} />
+              <Route path="parametros" element={<Parametros />} />
+              <Route path="usuarios" element={<UsuariosCRUD />} />
               <Route path="perfil" element={<Perfil />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />

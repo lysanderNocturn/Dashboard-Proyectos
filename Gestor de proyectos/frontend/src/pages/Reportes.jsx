@@ -209,44 +209,116 @@ const Reportes = () => {
               
               <Grid container spacing={3}>
                 <Grid item xs={6} md={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                    <Typography variant="h4" color="primary" fontWeight="bold">
-                      {stats.totalProyectos}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total Proyectos
-                    </Typography>
-                  </Box>
+                  <Card 
+                    sx={{ 
+                      borderRadius: 4, 
+                      textAlign: 'center', 
+                      p: 3, 
+                      bgcolor: 'grey.50', 
+                      transition: 'all 0.3s ease', 
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': { 
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                        transform: 'translateY(-6px)',
+                        '& .card-icon': { transform: 'scale(1.3) rotate(10deg)' }
+                      } 
+                    }}
+                  >
+                    <Box className="card-icon" sx={{ fontSize: '3rem', mb: 1, transition: 'transform 0.3s ease' }}>📊</Box>
+                    <CardContent>
+                      <Typography variant="h3" color="primary" fontWeight="bold">
+                        {stats.totalProyectos}
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium" color="text.secondary">
+                        Total Proyectos
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Grid>
                 <Grid item xs={6} md={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                    <Typography variant="h4" color="success.main" fontWeight="bold">
-                      {stats.proyectosActivos}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Proyectos Activos
-                    </Typography>
-                  </Box>
+                  <Card 
+                    sx={{ 
+                      borderRadius: 4, 
+                      textAlign: 'center', 
+                      p: 3, 
+                      bgcolor: 'grey.50', 
+                      transition: 'all 0.3s ease', 
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': { 
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                        transform: 'translateY(-6px)',
+                        '& .card-icon': { transform: 'scale(1.3) rotate(10deg)' }
+                      } 
+                    }}
+                  >
+                    <Box className="card-icon" sx={{ fontSize: '3rem', mb: 1, transition: 'transform 0.3s ease' }}>✅</Box>
+                    <CardContent>
+                      <Typography variant="h3" color="success.main" fontWeight="bold">
+                        {stats.proyectosActivos}
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium" color="text.secondary">
+                        Proyectos Activos
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Grid>
                 <Grid item xs={6} md={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                    <Typography variant="h4" color="info.main" fontWeight="bold">
-                      {stats.proyectosCompletados}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Completados
-                    </Typography>
-                  </Box>
+                  <Card 
+                    sx={{ 
+                      borderRadius: 4, 
+                      textAlign: 'center', 
+                      p: 3, 
+                      bgcolor: 'grey.50', 
+                      transition: 'all 0.3s ease', 
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': { 
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                        transform: 'translateY(-6px)',
+                        '& .card-icon': { transform: 'scale(1.3) rotate(10deg)' }
+                      } 
+                    }}
+                  >
+                    <Box className="card-icon" sx={{ fontSize: '3rem', mb: 1, transition: 'transform 0.3s ease' }}>🎯</Box>
+                    <CardContent>
+                      <Typography variant="h3" color="info.main" fontWeight="bold">
+                        {stats.proyectosCompletados}
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium" color="text.secondary">
+                        Completados
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Grid>
                 <Grid item xs={6} md={3}>
-                  <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                    <Typography variant="h4" color="warning.main" fontWeight="bold">
-                      {stats.promedioAvance.toFixed(1)}%
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Promedio Avance
-                    </Typography>
-                  </Box>
+                  <Card 
+                    sx={{ 
+                      borderRadius: 4, 
+                      textAlign: 'center', 
+                      p: 3, 
+                      bgcolor: 'grey.50', 
+                      transition: 'all 0.3s ease', 
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': { 
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                        transform: 'translateY(-6px)',
+                        '& .card-icon': { transform: 'scale(1.3) rotate(10deg)' }
+                      } 
+                    }}
+                  >
+                    <Box className="card-icon" sx={{ fontSize: '3rem', mb: 1, transition: 'transform 0.3s ease' }}>📈</Box>
+                    <CardContent>
+                      <Typography variant="h3" color="warning.main" fontWeight="bold">
+                        {stats.promedioAvance.toFixed(1)}%
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium" color="text.secondary">
+                        Promedio Avance
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Grid>
               </Grid>
             </Paper>

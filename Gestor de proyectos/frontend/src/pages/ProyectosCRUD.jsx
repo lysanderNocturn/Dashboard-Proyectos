@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { proyectosService } from '../services/proyectosService.js';
-import { ejeService } from '../services/parametrosService.js';
+import { ejeService, unidadService, departamentoService } from '../services/parametrosService.js';
+import { presupuestoService } from '../services/presupuestosService.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import {
   Box,
   Typography,
@@ -47,13 +49,24 @@ import {
   Visibility as VisibilityIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
-const steps = ['Información Básica', 'Objetivo y Meta', 'Distribución Trimestral'];
+const steps = [
+  'Unidad y Depto',  // Step 0: Auto-filled from user, then select department
+  'Información Básica',  // Step 1: Name, description
+  'Objetivo y Meta',  // Step 2: Objective, measurements
+  'Distribución Trimestral',  // Step 3: Trimestres
+  'Resumen'  // Step 4: Summary before creating
+];
 
 const ProyectosCRUD = () => {
+  const { user } = useAuth();
   const [proyectos, setProyectos] = useState([]);
   const [ejes, setEjes] = useState([]);
+  const [unidades, setUnidades] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
+  const [presupuestos, setPresupuestos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -73,6 +86,11 @@ const ProyectosCRUD = () => {
     fecha_inicio: '',
     fecha_fin: '',
     ejes_id: '',
+    presupuesto_id: '',
+    unidad_administrativa_id: '',
+    departamento_id: '',
+    accion_id: '',
+    medida_id: '',
     trimestres: [],
   });
   
@@ -104,13 +122,19 @@ const ProyectosCRUD = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const [proyectosData, ejesData] = await Promise.all([
+      const [proyectosData, ejesData, presupuestosData, unidadesData, departamentosData] = await Promise.all([
         proyectosService.getProyectos(),
-        ejeService.getEjes()
+        ejeService.getEjes(),
+        presupuestoService.getPresupuestos(),
+        unidadService.getUnidades(),
+        departamentoService.getDepartamentos()
       ]);
       console.log('Proyectos cargados:', proyectosData);
       setProyectos(proyectosData || []);
       setEjes(ejesData || []);
+      setPresupuestos(presupuestosData || []);
+      setUnidades(unidadesData || []);
+      setDepartamentos(departamentosData || []);
     } catch (err) {
       console.error('Error al cargar proyectos:', err);
       setError('Error al cargar los proyectos: ' + (err.message || 'Error desconocido'));
@@ -147,10 +171,13 @@ const ProyectosCRUD = () => {
         fecha_inicio: proyecto.fecha_inicio ? proyecto.fecha_inicio.split('T')[0] : '',
         fecha_fin: proyecto.fecha_fin ? proyecto.fecha_fin.split('T')[0] : '',
         ejes_id: proyecto.ejes_id || '',
+        presupuesto_id: proyecto.presupuesto_id || '',
         trimestres: existingTrimestres.length > 0 ? existingTrimestres : generateTrimestres(duracion, meta, medida),
       });
     } else {
       setEditingProyecto(null);
+      // Auto-select the user's unidad administrativa if available
+      const userUnidadId = user?.unidad_administrativa_id || '';
       setFormData({
         nombre: '',
         descripcion: '',
@@ -163,10 +190,17 @@ const ProyectosCRUD = () => {
         fecha_inicio: '',
         fecha_fin: '',
         ejes_id: '',
+        presupuesto_id: '',
+        unidad_administrativa_id: userUnidadId,
+        departamento_id: '',
+        accion_id: '',
+        medida_id: '',
         trimestres: generateTrimestres(1, 100, 'porcentaje'),
       });
     }
+
     setOpenDialog(true);
+
   };
 
   const handleCloseDialog = () => {
@@ -191,12 +225,21 @@ const ProyectosCRUD = () => {
     setError(null);
     switch (step) {
       case 0:
+        // Validar unidad administrativa (obligatoria) y departamento
+        if (!formData.unidad_administrativa_id) {
+          setError('La unidad administrativa es obligatoria');
+          return false;
+        }
+        return true;
+      case 1:
+        // Validar nombre del proyecto
         if (!formData.nombre.trim()) {
           setError('El nombre del proyecto es obligatorio');
           return false;
         }
         return true;
-      case 1:
+      case 2:
+        // Validar objetivo
         if (!formData.objetivo.trim()) {
           setError('El objetivo del proyecto es obligatorio');
           return false;
@@ -297,6 +340,67 @@ const ProyectosCRUD = () => {
   const getStepContent = (step) => {
     switch (step) {
       case 0:
+        // Step 1: Unidad Administrativa y Departamento
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom color="primary">
+                Ubicación del Proyecto
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Seleccione la unidad administrativa y departamento donde se realizará el proyecto
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={viewMode || !!editingProyecto}>
+                <InputLabel>Unidad Administrativa *</InputLabel>
+                <Select
+                  value={formData.unidad_administrativa_id}
+                  label="Unidad Administrativa *"
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    unidad_administrativa_id: e.target.value,
+                    departamento_id: '' 
+                  })}
+                >
+                  <MenuItem value=""><em>Seleccionar unidad...</em></MenuItem>
+                  {unidades.map((unidad) => (
+                    <MenuItem key={unidad.id} value={unidad.id}>{unidad.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={viewMode || !formData.unidad_administrativa_id || !!editingProyecto}>
+                <InputLabel>Departamento *</InputLabel>
+                <Select
+                  value={formData.departamento_id}
+                  label="Departamento *"
+                  onChange={(e) => setFormData({ ...formData, departamento_id: e.target.value })}
+                >
+                  <MenuItem value=""><em>Seleccionar departamento...</em></MenuItem>
+                  {departamentos
+                    .filter(d => !formData.unidad_administrativa_id || d.unidad_administrativa_id === formData.unidad_administrativa_id)
+                    .map((dept) => (
+                      <MenuItem key={dept.id} value={dept.id}>{dept.nombre}</MenuItem>
+                    ))
+                  }
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: 'grey.50' }}>
+                <CardContent>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Nota:</strong> La unidad administrativa se ha seleccionado automáticamente según su perfil de usuario.
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        );
+      case 1:
+        // Step 2: Información Básica (Nombre, Descripción, Fechas)
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -327,7 +431,7 @@ const ProyectosCRUD = () => {
                 disabled={viewMode}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth disabled={viewMode}>
                 <InputLabel>Eje del Proyecto</InputLabel>
                 <Select
@@ -338,6 +442,23 @@ const ProyectosCRUD = () => {
                   <MenuItem value=""><em>Seleccionar eje...</em></MenuItem>
                   {ejes.map((eje) => (
                     <MenuItem key={eje.id} value={eje.id}>{eje.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={viewMode}>
+                <InputLabel>Presupuesto</InputLabel>
+                <Select
+                  value={formData.presupuesto_id}
+                  label="Presupuesto"
+                  onChange={(e) => setFormData({ ...formData, presupuesto_id: e.target.value })}
+                >
+                  <MenuItem value=""><em>Seleccionar presupuesto...</em></MenuItem>
+                  {presupuestos.map((pres) => (
+                    <MenuItem key={pres.id} value={pres.id}>
+                      {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(pres.monto)} - {pres.ano}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -398,25 +519,35 @@ const ProyectosCRUD = () => {
         );
       
       case 1:
+        // Step 2: Información Básica (Nombre, Descripción, Fechas)
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
-                label="Objetivo del Proyecto *"
+                autoFocus
+                label="Nombre del Proyecto *"
                 fullWidth
-                multiline
-                rows={4}
-                placeholder="Describa el objetivo general del proyecto..."
-                value={formData.objetivo}
-                onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 disabled={viewMode}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <TrendingUpIcon color="primary" />
+                      <FlagIcon color="primary" />
                     </InputAdornment>
                   ),
                 }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Descripción"
+                fullWidth
+                multiline
+                rows={3}
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                disabled={viewMode}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -457,8 +588,16 @@ const ProyectosCRUD = () => {
               />
             </Grid>
             <Grid item xs={12}>
-              <Card variant="outlined" sx={{ bgcolor: 'background.default' }}>
-                <CardContent>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  borderRadius: 4, 
+                  bgcolor: 'background.default', 
+                  transition: 'all 0.3s ease', 
+                  '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' } 
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
                   <Typography variant="subtitle2" gutterBottom color="primary">
                     <PieChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                     Resumen
@@ -475,7 +614,7 @@ const ProyectosCRUD = () => {
           </Grid>
         );
       
-      case 2:
+      case 3:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
@@ -488,8 +627,18 @@ const ProyectosCRUD = () => {
               const yearTrimestres = formData.trimestres.filter(t => t.ano === yearNum);
               
               return (
-                <Card key={yearNum} variant="outlined" sx={{ mb: 2, bgcolor: 'background.default' }}>
-                  <CardContent>
+                <Card 
+                  key={yearNum} 
+                  variant="outlined" 
+                  sx={{ 
+                    mb: 2, 
+                    borderRadius: 4, 
+                    bgcolor: 'background.default', 
+                    transition: 'all 0.3s ease', 
+                    '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' } 
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
                     <Typography variant="subtitle1" color="primary" fontWeight="bold" gutterBottom>
                       Año {yearNum}
                     </Typography>
@@ -501,7 +650,17 @@ const ProyectosCRUD = () => {
                         
                         return (
                           <Grid item xs={6} sm={3} key={`${yearNum}-${trimestre.trimestre}`}>
-                            <Card variant="outlined">
+                            <Card 
+                              variant="outlined" 
+                              sx={{ 
+                                borderRadius: 3,
+                                transition: 'all 0.2s ease',
+                                '&:hover': { 
+                                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                  transform: 'scale(1.02)'
+                                } 
+                              }}
+                            >
                               <CardContent sx={{ p: 2 }}>
                                 <Typography variant="subtitle2" color="primary">
                                   T{trimestre.trimestre}
@@ -532,6 +691,99 @@ const ProyectosCRUD = () => {
                 </Card>
               );
             })}
+          </Box>
+        );
+      
+      case 4:
+        // Step 5: Resumen del Proyecto
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom color="primary">
+              Resumen del Proyecto
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Revise la información antes de crear el proyecto
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Información General
+                    </Typography>
+                    <Typography variant="body2"><strong>Nombre:</strong> {formData.nombre || 'Sin nombre'}</Typography>
+                    <Typography variant="body2"><strong>Descripción:</strong> {formData.descripcion || 'Sin descripción'}</Typography>
+                    <Typography variant="body2"><strong>Objetivo:</strong> {formData.objetivo || 'Sin objetivo'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Ubicación
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Unidad:</strong> {unidades.find(u => u.id === formData.unidad_administrativa_id)?.nombre || 'No seleccionada'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Departamento:</strong> {departamentos.find(d => d.id === formData.departamento_id)?.nombre || 'No seleccionado'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Metas y Duración
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Meta:</strong> {formData.meta_total} {formData.medida_tipo === 'porcentaje' ? '%' : 'unidades'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Duración:</strong> {formData.duracion_anos} año(s)
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Eje y Evaluación
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Eje:</strong> {ejes.find(e => e.id === formData.ejes_id)?.nombre || 'No seleccionado'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong>Evaluación:</strong> {formData.evaluacion || 'Sin evaluación'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Presupuesto
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Presupuesto:</strong> {
+                        presupuestos.find(p => p.id === formData.presupuesto_id)
+                          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(presupuestos.find(p => p.id === formData.presupuesto_id)?.monto)
+                          : 'No asignado'
+                      }
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           </Box>
         );
       
@@ -612,6 +864,7 @@ const ProyectosCRUD = () => {
                   <TableCell><strong>Proyecto</strong></TableCell>
                   <TableCell><strong>Objetivo</strong></TableCell>
                   <TableCell><strong>Meta</strong></TableCell>
+                  <TableCell><strong>Presupuesto</strong></TableCell>
                   <TableCell><strong>Duración</strong></TableCell>
                   <TableCell><strong>Estado</strong></TableCell>
                   <TableCell><strong>Progreso</strong></TableCell>
@@ -621,7 +874,7 @@ const ProyectosCRUD = () => {
               <TableBody>
                 {proyectos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">No hay proyectos registrados</Typography>
                       <Button variant="contained" sx={{ mt: 2 }} onClick={() => handleOpenDialog()}>
                         Crear Proyecto
@@ -653,6 +906,18 @@ const ProyectosCRUD = () => {
                             color="primary"
                             variant="outlined"
                           />
+                        </TableCell>
+                        <TableCell>
+                          {proyecto.presupuesto_id ? (
+                            <Chip 
+                              label={new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(proyecto.presupuesto_monto)}
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                            />
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">Sin asignar</Typography>
+                          )}
                         </TableCell>
                         <TableCell>{proyecto.duracion_anos || 1} año(s)</TableCell>
                         <TableCell>
@@ -703,8 +968,15 @@ const ProyectosCRUD = () => {
 
       {/* Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
-          {viewMode ? 'Ver Proyecto' : editingProyecto ? 'Editar Proyecto' : 'Nuevo Proyecto'}
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" fontWeight="medium">
+              {viewMode ? 'Ver Proyecto' : editingProyecto ? 'Editar Proyecto' : 'Nuevo Proyecto'}
+            </Typography>
+            <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </DialogTitle>
         
         <DialogContent sx={{ pt: 3 }}>
@@ -725,8 +997,13 @@ const ProyectosCRUD = () => {
           {getStepContent(activeStep)}
         </DialogContent>
         
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={handleCloseDialog} startIcon={<CancelIcon />}>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button 
+            onClick={handleCloseDialog} 
+            startIcon={<CancelIcon />}
+            variant="outlined"
+            sx={{ minWidth: 100 }}
+          >
             {viewMode ? 'Cerrar' : 'Cancelar'}
           </Button>
           
@@ -734,12 +1011,22 @@ const ProyectosCRUD = () => {
             <>
               <Box sx={{ flex: 1 }} />
               {activeStep > 0 && (
-                <Button onClick={handleBack}>Anterior</Button>
+                <Button onClick={handleBack} variant="outlined" sx={{ minWidth: 100 }}>
+                  Anterior
+                </Button>
               )}
               {activeStep < steps.length - 1 ? (
-                <Button variant="contained" onClick={handleNext}>Siguiente</Button>
+                <Button variant="contained" onClick={handleNext} sx={{ minWidth: 100 }}>
+                  Siguiente
+                </Button>
               ) : (
-                <Button variant="contained" color="success" onClick={handleSubmit} startIcon={<SaveIcon />}>
+                <Button 
+                  variant="contained" 
+                  color="success" 
+                  onClick={handleSubmit} 
+                  startIcon={<SaveIcon />}
+                  sx={{ minWidth: 120 }}
+                >
                   {editingProyecto ? 'Guardar' : 'Crear'}
                 </Button>
               )}
@@ -749,14 +1036,40 @@ const ProyectosCRUD = () => {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle color="error">Confirmar Eliminación</DialogTitle>
+      <Dialog 
+        open={deleteConfirmOpen} 
+        onClose={() => setDeleteConfirmOpen(false)} 
+        PaperProps={{ sx: { borderRadius: 3 } }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'error.main', fontWeight: 'medium' }}>
+          Confirmar Eliminación
+        </DialogTitle>
         <DialogContent>
-          <Typography>¿Eliminar el proyecto <strong>"{proyectoToDelete?.nombre}"</strong>?</Typography>
+          <Typography>
+            ¿Está seguro de eliminar el proyecto <strong>"{proyectoToDelete?.nombre}"</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">Eliminar</Button>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button 
+            onClick={() => setDeleteConfirmOpen(false)} 
+            variant="outlined"
+            sx={{ minWidth: 100 }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirmDelete} 
+            color="error" 
+            variant="contained"
+            sx={{ minWidth: 100 }}
+          >
+            Eliminar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

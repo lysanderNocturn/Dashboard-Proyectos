@@ -3,19 +3,19 @@ import api from './api.js';
 // Unidad Administrativa
 export const unidadService = {
   async getUnidades() {
-    const response = await api.get('/unidad-administrativa');
+    const response = await api.get('/unidad-administrativas');
     return response.data;
   },
   async createUnidad(data) {
-    const response = await api.post('/unidad-administrativa', data);
+    const response = await api.post('/unidad-administrativas', data);
     return response.data;
   },
   async updateUnidad(id, data) {
-    const response = await api.put(`/unidad-administrativa/${id}`, data);
+    const response = await api.put(`/unidad-administrativas/${id}`, data);
     return response.data;
   },
   async deleteUnidad(id) {
-    const response = await api.delete(`/unidad-administrativa/${id}`);
+    const response = await api.delete(`/unidad-administrativas/${id}`);
     return response.data;
   },
 };

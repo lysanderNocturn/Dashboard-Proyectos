@@ -3,6 +3,7 @@ CREATE TABLE users (
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    unidad_administrativa_id INTEGER REFERENCES unidad_administrativa(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -76,7 +77,7 @@ CREATE TABLE proyectos(
     evaluacion TEXT,
     ejes_id INTEGER REFERENCES ejes(id) ON DELETE SET NULL,
     estado_actual VARCHAR(50) NOT NULL DEFAULT 'Activo',
-    asignado_a INTEGER REFERENCES presupuestos(id) ON DELETE SET NULL,
+    asignado_a INTEGER REFERENCES users(id) ON DELETE SET NULL,
     presupuesto_id INTEGER REFERENCES presupuestos(id) ON DELETE SET NULL,
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

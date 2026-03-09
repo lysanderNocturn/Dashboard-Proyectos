@@ -13,25 +13,32 @@ const safeTrimestres = (trimestres) => {
 
 export const getProyectos = async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM proyectos ORDER BY created_at DESC');
+    // Optimized: Use a single query with LEFT JOIN to avoid N+1 query problem
+    const { rows } = await pool.query(`
+      SELECT p.*, 
+             pr.monto as presupuesto_monto, pr.ano as presupuesto_ano,
+             u.nombre as unidad_nombre, d.nombre as departamento_nombre,
+             COALESCE(
+               json_agg(
+                 DISTINCT jsonb_build_object(
+                   'ano', pt.ano,
+                   'trimestre', pt.trimestre,
+                   'meta', pt.meta,
+                   'porcentaje', pt.porcentaje
+                 )
+               ) FILTER (WHERE pt.id IS NOT NULL),
+               '[]'
+             ) as trimestres
+      FROM proyectos p
+      LEFT JOIN presupuestos pr ON p.presupuesto_id = pr.id
+      LEFT JOIN unidad_administrativa u ON p.unidad_administrativa_id = u.id
+      LEFT JOIN departamentos d ON p.departamento_id = d.id
+      LEFT JOIN proyectos_trimestres pt ON p.id = pt.proyecto_id
+      GROUP BY p.id, pr.monto, pr.ano, u.nombre, d.nombre
+      ORDER BY p.created_at DESC
+    `);
     
-    // Get trimestres for each proyecto
-    const proyectosConTrimestres = await Promise.all(
-      rows.map(async (proyecto) => {
-        try {
-          const { rows: trimestres } = await pool.query(
-            'SELECT ano, trimestre, meta, porcentaje FROM proyectos_trimestres WHERE proyecto_id = $1 ORDER BY ano, trimestre',
-            [proyecto.id]
-          );
-          return { ...proyecto, trimestres: trimestres || [] };
-        } catch (err) {
-          console.error(`Error al obtener trimestres para proyecto ${proyecto.id}:`, err);
-          return { ...proyecto, trimestres: [] };
-        }
-      })
-    );
-    
-    res.json(proyectosConTrimestres);
+    res.json(rows);
   } catch (error) {
     console.error('Error al obtener proyectos:', error);
     res.status(500).json({ message: "Error al obtener los proyectos", error: error.message });
@@ -41,27 +48,36 @@ export const getProyectos = async (req, res) => {
 export const getProyectoById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM proyectos WHERE id = $1', [id]);
+    // Optimized: Single query with JOIN instead of N+1
+    const { rows } = await pool.query(`
+      SELECT p.*, 
+             pr.monto as presupuesto_monto, pr.ano as presupuesto_ano,
+             u.nombre as unidad_nombre, d.nombre as departamento_nombre,
+             COALESCE(
+               json_agg(
+                 DISTINCT jsonb_build_object(
+                   'ano', pt.ano,
+                   'trimestre', pt.trimestre,
+                   'meta', pt.meta,
+                   'porcentaje', pt.porcentaje
+                 )
+               ) FILTER (WHERE pt.id IS NOT NULL),
+               '[]'
+             ) as trimestres
+      FROM proyectos p
+      LEFT JOIN presupuestos pr ON p.presupuesto_id = pr.id
+      LEFT JOIN unidad_administrativa u ON p.unidad_administrativa_id = u.id
+      LEFT JOIN departamentos d ON p.departamento_id = d.id
+      LEFT JOIN proyectos_trimestres pt ON p.id = pt.proyecto_id
+      WHERE p.id = $1
+      GROUP BY p.id, pr.monto, pr.ano, u.nombre, d.nombre
+    `, [id]);
     
     if (rows.length === 0) {
       return res.status(404).json({ message: "Proyecto no encontrado" });
     }
     
-    const proyecto = rows[0];
-    
-    // Get trimestres
-    try {
-      const { rows: trimestres } = await pool.query(
-        'SELECT ano, trimestre, meta, porcentaje FROM proyectos_trimestres WHERE proyecto_id = $1 ORDER BY ano, trimestre',
-        [id]
-      );
-      proyecto.trimestres = trimestres || [];
-    } catch (err) {
-      console.error('Error al obtener trimestres:', err);
-      proyecto.trimestres = [];
-    }
-    
-    res.json(proyecto);
+    res.json(rows[0]);
   } catch (error) {
     console.error('Error al obtener proyecto:', error);
     res.status(500).json({ message: "Error al obtener el proyecto", error: error.message });
@@ -93,7 +109,8 @@ export const createProyecto = async (req, res) => {
       { name: 'duracion_anos', value: data.duracion_anos || 1 },
       { name: 'medida_tipo', value: data.medida_tipo || 'porcentaje' },
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
-      { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin }
+      { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
+      { name: 'presupuesto_id', value: data.presupuesto_id || null },
     ];
     
     for (const field of optionalFields) {
@@ -189,7 +206,8 @@ export const updateProyecto = async (req, res) => {
       { name: 'duracion_anos', value: data.duracion_anos },
       { name: 'medida_tipo', value: data.medida_tipo },
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
-      { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin }
+      { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
+      { name: 'presupuesto_id', value: data.presupuesto_id || null }
     ];
     
     for (const field of fields) {

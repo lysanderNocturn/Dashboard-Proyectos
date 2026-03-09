@@ -12,6 +12,7 @@ import Perfil from './pages/Perfil.jsx';
 import AvanceTrimestral from './pages/AvanceTrimestral.jsx';
 import Reportes from './pages/Reportes.jsx';
 import Parametros from './pages/Parametros.jsx';
+import PresupuestosCRUD from './pages/PresupuestosCRUD.jsx';
 import './App.css';
 
 // Tema con color principal rojo vino/borgoña (#800020)
@@ -101,6 +102,7 @@ function App() {
               <Route path="avance" element={<AvanceTrimestral />} />
               <Route path="reportes" element={<Reportes />} />
               <Route path="parametros" element={<Parametros />} />
+              <Route path="presupuestos" element={<PresupuestosCRUD />} />
               <Route path="usuarios" element={<UsuariosCRUD />} />
               <Route path="perfil" element={<Perfil />} />
             </Route>

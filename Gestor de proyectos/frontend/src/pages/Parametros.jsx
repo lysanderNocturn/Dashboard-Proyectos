@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Paper,
-  Grid,
   Tabs,
   Tab,
   Table,
@@ -361,12 +360,10 @@ const Parametros = () => {
 
         {/* Dialog */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 1.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                {tab === 0 ? (editingItem ? 'Editar' : 'Nueva') : 
-                 tab === 1 ? (editingItem ? 'Editar' : 'Nuevo') :
-                 (editingItem ? 'Editar' : 'Nuevo')} {' '}
+              <Typography variant="h6" fontWeight="medium">
+                {editingItem ? 'Editar' : 'Nuevo'} {' '}
                 {tab === 0 ? 'Unidad Administrativa' : 
                  tab === 1 ? 'Departamento' : 'Eje'}
               </Typography>
@@ -375,58 +372,75 @@ const Parametros = () => {
               </IconButton>
             </Box>
           </DialogTitle>
-          <DialogContent sx={{ pt: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nombre"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Descripción"
-                  multiline
-                  rows={3}
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                />
-              </Grid>
+          <DialogContent sx={{ pt: 3, pb: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+              <TextField
+                fullWidth
+                label="Nombre"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                autoFocus
+                required
+                variant="outlined"
+                size="medium"
+              />
+              <TextField
+                fullWidth
+                label="Descripción"
+                multiline
+                rows={3}
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                variant="outlined"
+                size="medium"
+                placeholder="Ingrese una descripción"
+              />
               {tab === 1 && (
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Unidad Administrativa</InputLabel>
-                    <Select
-                      value={formData.unidad_administrativa_id}
-                      label="Unidad Administrativa"
-                      onChange={(e) => setFormData({ ...formData, unidad_administrativa_id: e.target.value })}
-                    >
-                      {unidades.map((u) => (
-                        <MenuItem key={u.id} value={u.id}>{u.nombre}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                <FormControl fullWidth variant="outlined" size="medium">
+                  <InputLabel>Unidad Administrativa</InputLabel>
+                  <Select
+                    value={formData.unidad_administrativa_id || ''}
+                    label="Unidad Administrativa"
+                    onChange={(e) => setFormData({ ...formData, unidad_administrativa_id: e.target.value })}
+                  >
+                    <MenuItem value="">
+                      <em>Seleccione una opción</em>
+                    </MenuItem>
+                    {unidades.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>{u.nombre}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               )}
               {tab === 2 && (
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Año"
-                    type="number"
-                    value={formData.ano}
-                    onChange={(e) => setFormData({ ...formData, ano: Number(e.target.value) })}
-                  />
-                </Grid>
+                <TextField
+                  fullWidth
+                  label="Año"
+                  type="number"
+                  value={formData.ano}
+                  onChange={(e) => setFormData({ ...formData, ano: Number(e.target.value) })}
+                  variant="outlined"
+                  size="medium"
+                  inputProps={{ min: 2000, max: 2100 }}
+                />
               )}
-            </Grid>
+            </Box>
           </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleCloseDialog} color="inherit">Cancelar</Button>
-            <Button onClick={handleSave} variant="contained" disabled={isLoading}>
+          <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+            <Button 
+              onClick={handleCloseDialog} 
+              color="inherit" 
+              variant="outlined"
+              sx={{ minWidth: 100 }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              variant="contained" 
+              disabled={isLoading}
+              sx={{ minWidth: 100 }}
+            >
               {isLoading ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogActions>

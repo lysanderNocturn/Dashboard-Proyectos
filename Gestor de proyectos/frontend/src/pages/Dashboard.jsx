@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { proyectosService } from '../services/proyectosService.js';
 import {
@@ -83,23 +83,59 @@ const Dashboard = () => {
   };
 
   const totalProyectos = proyectos.length;
-  const proyectosActivos = proyectos.filter(p => p.estado_actual === 'Activo').length;
-  const proyectosCompletados = proyectos.filter(p => p.estado_actual === 'Completado').length;
-  const proyectosPendientes = proyectos.filter(p => p.estado_actual === 'Pendiente').length;
   
-  const promedioProgreso = proyectos.length > 0
-    ? proyectos.reduce((sum, p) => {
-        const meses = Array.isArray(p.trimestres) ? p.trimestres : [];
-        const prog = Number(meses.reduce((t, tr) => t + (Number(tr.porcentaje) || 0), 0)) || 0;
-        return sum + prog;
-      }, 0) / proyectos.length
-    : 0;
+  // Memoized stats to avoid recalculating on every render
+  const stats = useMemo(() => {
+    const proyectosActivos = proyectos.filter(p => p.estado_actual === 'Activo').length;
+    const proyectosCompletados = proyectos.filter(p => p.estado_actual === 'Completado').length;
+    const proyectosPendientes = proyectos.filter(p => p.estado_actual === 'Pendiente').length;
+    
+    const promedioProgreso = proyectos.length > 0
+      ? proyectos.reduce((sum, p) => {
+          const meses = Array.isArray(p.trimestres) ? p.trimestres : [];
+          const prog = Number(meses.reduce((t, tr) => t + (Number(tr.porcentaje) || 0), 0)) || 0;
+          return sum + prog;
+        }, 0) / proyectos.length
+      : 0;
+    
+    return { proyectosActivos, proyectosCompletados, proyectosPendientes, promedioProgreso };
+  }, [proyectos]);
+  
+  const { proyectosActivos, proyectosCompletados, proyectosPendientes, promedioProgreso } = stats;
 
   const statCards = [
-    { title: 'Total', value: totalProyectos, icon: <FolderIcon />, gradient: 'linear-gradient(135deg, #800020 0%, #a3405c 100%)' },
-    { title: 'Activos', value: proyectosActivos, icon: <TrendingUpIcon />, gradient: 'linear-gradient(135deg, #8B0000 0%, #CD5C5C 100%)' },
-    { title: 'Completados', value: proyectosCompletados, icon: <CheckCircleIcon />, gradient: 'linear-gradient(135deg, #722F37 0%, #965058 100%)' },
-    { title: 'Pendientes', value: proyectosPendientes, icon: <TimeIcon />, gradient: 'linear-gradient(135deg, #800020 0%, #c44d5e 100%)' },
+    { 
+      title: 'Total de Proyectos', 
+      value: totalProyectos, 
+      icon: <FolderIcon />, 
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      badge: '📊',
+      description: 'Proyectos registrados'
+    },
+    { 
+      title: 'Proyectos Activos', 
+      value: proyectosActivos, 
+      icon: <TrendingUpIcon />, 
+      gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+      badge: '✅',
+      description: 'En ejecución'
+    },
+    { 
+      title: 'Completados', 
+      value: proyectosCompletados, 
+      icon: <CheckCircleIcon />, 
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      badge: '🎯',
+      description: 'Objetivos alcanzados'
+    },
+    { 
+      title: 'Pendientes', 
+      value: proyectosPendientes, 
+      icon: <TimeIcon />, 
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      badge: '⏳',
+      description: 'Por iniciar'
+    },
   ];
 
   return (
@@ -125,19 +161,6 @@ const Dashboard = () => {
                 Bienvenido al Sistema de Gestión de Proyectos
               </Typography>
             </Box>
-            <Button
-              variant="outlined"
-              startIcon={<TimelineIcon />}
-              onClick={() => navigate('/avance')}
-              sx={{ 
-                borderColor: 'rgba(255,255,255,0.5)', 
-                color: 'white',
-                mr: 1,
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
-              }}
-            >
-              Avance Trimestral
-            </Button>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
@@ -182,15 +205,66 @@ const Dashboard = () => {
           {statCards.map((stat, index) => (
             <Grid item xs={12} sm={6} md={3} key={stat.title}>
               <Zoom in style={{ transitionDelay: `${index * 100}ms` }}>
-                <Card sx={{ borderRadius: 3, background: stat.gradient, color: 'white', '&:hover': { transform: 'translateY(-4px)' } }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>{stat.icon}</Avatar>
-                      <Box>
-                        <Typography variant="h4" fontWeight="bold">{stat.value}</Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9 }}>{stat.title}</Typography>
+                <Card 
+                  sx={{ 
+                    borderRadius: 4, 
+                    background: stat.gradient, 
+                    color: 'white', 
+                    transition: 'all 0.3s ease', 
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&:hover': { 
+                      transform: 'translateY(-8px)', 
+                      boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                      '& .stat-icon': { transform: 'scale(1.2) rotate(5deg)' },
+                      '& .stat-badge': { opacity: 1, transform: 'scale(1)' }
+                    } 
+                  }}
+                >
+                  {/* Decorative circle */}
+                  <Box sx={{
+                    position: 'absolute',
+                    top: -20,
+                    right: -20,
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.1)',
+                  }} />
+                  <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Avatar 
+                        className="stat-icon"
+                        sx={{ 
+                          bgcolor: 'rgba(255,255,255,0.25)', 
+                          width: 56, 
+                          height: 56,
+                          transition: 'transform 0.3s ease'
+                        }}
+                      >
+                        {stat.icon}
+                      </Avatar>
+                      <Box 
+                        className="stat-badge"
+                        sx={{
+                          opacity: 0.7,
+                          transform: 'scale(0.8)',
+                          transition: 'all 0.3s ease',
+                          fontSize: '2rem'
+                        }}
+                      >
+                        {stat.badge}
                       </Box>
                     </Box>
+                    <Typography variant="h3" fontWeight="bold" sx={{ mb: 0.5 }}>
+                      {stat.value}
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.95, fontWeight: 'medium' }}>
+                      {stat.title}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.75, display: 'block', mt: 0.5 }}>
+                      {stat.description}
+                    </Typography>
                   </CardContent>
                 </Card>
               </Zoom>
@@ -201,10 +275,38 @@ const Dashboard = () => {
         {/* Projects Table & Summary */}
         <Grid container spacing={3}>
           <Grid item xs={12} lg={8}>
-            <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-              <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6" fontWeight="bold"><FlagIcon color="primary" sx={{ mr: 1 }} />Proyectos Recientes</Typography>
-                <Button variant="text" endIcon={<ArrowForwardIcon />} onClick={() => navigate('/proyectos')}>Ver todos</Button>
+            <Paper 
+              elevation={2} 
+              sx={{ 
+                borderRadius: 4, 
+                overflow: 'hidden',
+                transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }
+              }}
+            >
+              <Box sx={{ 
+                p: 3, 
+                borderBottom: '1px solid', 
+                borderColor: 'divider', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                background: 'linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%)'
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.main', color: 'white', mr: 2 }}>
+                    <FlagIcon />
+                  </Box>
+                  <Typography variant="h6" fontWeight="bold">Proyectos Recientes</Typography>
+                </Box>
+                <Button 
+                  variant="text" 
+                  endIcon={<ArrowForwardIcon />} 
+                  onClick={() => navigate('/proyectos')}
+                  sx={{ fontWeight: 'medium' }}
+                >
+                  Ver todos
+                </Button>
               </Box>
               
               {isLoading ? (
@@ -267,29 +369,81 @@ const Dashboard = () => {
 
           {/* Summary Panel */}
           <Grid item xs={12} lg={4}>
-            <Card elevation={2} sx={{ borderRadius: 3 }}>
+            <Card 
+              elevation={2} 
+              sx={{ 
+                borderRadius: 4, 
+                transition: 'all 0.3s ease', 
+                background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)',
+                '&:hover': { 
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                  transform: 'translateY(-4px)'
+                } 
+              }}
+            >
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom><PieChartIcon color="primary" sx={{ mr: 1 }} />Resumen</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Box sx={{ 
+                    p: 1.5, 
+                    borderRadius: 2, 
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    mr: 2
+                  }}>
+                    <PieChartIcon />
+                  </Box>
+                  <Typography variant="h6" fontWeight="bold">
+                    Resumen de Proyectos
+                  </Typography>
+                </Box>
                 <Box sx={{ my: 2 }}>
-                  {['Activo', 'En Progreso', 'Pendiente', 'Completado', 'Cancelado'].map((estado) => {
+                  {[
+                    { estado: 'Activo', color: '#11998e' },
+                    { estado: 'En Progreso', color: '#4facfe' },
+                    { estado: 'Pendiente', color: '#f59e0b' },
+                    { estado: 'Completado', color: '#10b981' },
+                    { estado: 'Cancelado', color: '#ef4444' }
+                  ].map(({ estado, color }) => {
                     const count = proyectos.filter(p => p.estado_actual === estado).length;
                     const percentage = totalProyectos > 0 ? (count / totalProyectos) * 100 : 0;
                     return (
-                      <Box key={estado} sx={{ mb: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="body2">{estado}</Typography>
-                          <Typography variant="body2" fontWeight="medium">{count}</Typography>
+                      <Tooltip key={estado} title={`${count} proyecto(s)`} arrow placement="left">
+                        <Box sx={{ mb: 2.5, cursor: 'pointer', transition: 'all 0.2s', '&:hover': { transform: 'scale(1.02)' } }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight="medium">{estado}</Typography>
+                            <Typography variant="body2" fontWeight="bold" color="primary">{count}</Typography>
+                          </Box>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={percentage} 
+                            sx={{ 
+                              height: 8, 
+                              borderRadius: 4,
+                              bgcolor: 'grey.100',
+                              '& .MuiLinearProgress-bar': { 
+                                bgcolor: color,
+                                borderRadius: 4,
+                                transition: 'width 0.5s ease'
+                              } 
+                            }} 
+                          />
                         </Box>
-                        <LinearProgress variant="determinate" value={percentage} sx={{ height: 6, borderRadius: 3 }} />
-                      </Box>
+                      </Tooltip>
                     );
                   })}
                 </Box>
-                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">
                     <CalendarIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
                     Actualizado: {new Date().toLocaleDateString('es-ES')}
                   </Typography>
+                  <Chip 
+                    label={`${proyectos.length} total`} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined"
+                    sx={{ fontWeight: 'bold' }}
+                  />
                 </Box>
               </CardContent>
             </Card>

@@ -14,6 +14,7 @@ INSERT INTO roles (name, description) VALUES
 -- 2. USERS (depends on roles)
 INSERT INTO users (username, email, password_hash, role_id) VALUES
 ('admin', 'admin@sistema.gob', '$2b$10$hashplaceholder', 1),
+('admin2', 'admin2@sistema.gob', '$2b$10$sJkuzSzBsbmSmhgPmYCJzu1NrXiAQYDCePKCA/5h3BsAJa/pUTgm.', 1),
 ('director.plan', 'director@sistema.gob', '$2b$10$hashplaceholder', 2),
 ('coordinador.tec', 'coordinador@sistema.gob', '$2b$10$hashplaceholder', 3),
 ('analista1', 'analista1@sistema.gob', '$2b$10$hashplaceholder', 4),

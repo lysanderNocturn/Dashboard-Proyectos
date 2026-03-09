@@ -14,7 +14,8 @@ const sanitizeUser = (user) => ({
   id: user.id,
   username: user.username,
   email: user.email,
-  role_id: user.role_id
+  role_id: user.role_id,
+  unidad_administrativa_id: user.unidad_administrativa_id
 });
 
 // Helper function to verify password with bcrypt
@@ -154,7 +155,7 @@ export const getMe = async (req, res) => {
     }
     
     const { rows } = await pool.query(
-      'SELECT id, username, email, role_id, created_at, updated_at FROM users WHERE id = $1',
+      'SELECT id, username, email, role_id, unidad_administrativa_id, created_at, updated_at FROM users WHERE id = $1',
       [parseInt(userId)]
     );
     

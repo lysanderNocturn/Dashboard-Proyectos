@@ -410,7 +410,18 @@ const Perfil = () => {
         <Grid container spacing={3}>
           {/* Información del Perfil */}
           <Grid item xs={12} md={8}>
-            <Card elevation={3} sx={{ borderRadius: 3, height: '100%' }}>
+            <Card 
+              elevation={3} 
+              sx={{ 
+                borderRadius: 4, 
+                height: '100%', 
+                transition: 'all 0.3s ease', 
+                '&:hover': { 
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                  transform: 'translateY(-4px)'
+                } 
+              }}
+            >
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                   <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -565,7 +576,18 @@ const Perfil = () => {
 
           {/* Acciones del Perfil */}
           <Grid item xs={12} md={4}>
-            <Card elevation={3} sx={{ borderRadius: 3, height: '100%' }}>
+            <Card 
+              elevation={3} 
+              sx={{ 
+                borderRadius: 4, 
+                height: '100%', 
+                transition: 'all 0.3s ease', 
+                '&:hover': { 
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                  transform: 'translateY(-4px)'
+                } 
+              }}
+            >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <SecurityIcon color="primary" />

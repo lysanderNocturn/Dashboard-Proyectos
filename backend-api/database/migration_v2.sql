@@ -2,6 +2,11 @@
 -- NOTE: These columns may already exist if db.sql was already updated
 -- Using IF NOT EXISTS to prevent errors on fresh installs
 
+-- FIX: Change asignado_a to reference users instead of presupuestos (was incorrectly defined)
+ALTER TABLE proyectos
+DROP CONSTRAINT IF EXISTS proyectos_asignado_a_fkey,
+ADD CONSTRAINT proyectos_asignado_a_fkey FOREIGN KEY (asignado_a) REFERENCES users(id) ON DELETE SET NULL;
+
 -- Add new columns to proyectos table (only if they don't exist)
 ALTER TABLE proyectos
 ADD COLUMN IF NOT EXISTS objetivo TEXT,
@@ -24,6 +29,14 @@ CREATE TABLE IF NOT EXISTS proyectos_trimestres (
 
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_proyectos_trimestres_proyecto ON proyectos_trimestres(proyecto_id);
+
+-- Additional indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_proyectos_estado ON proyectos(estado_actual);
+CREATE INDEX IF NOT EXISTS idx_proyectos_presupuesto ON proyectos(presupuesto_id);
+CREATE INDEX IF NOT EXISTS idx_proyectos_unidad ON proyectos(unidad_administrativa_id);
+
+-- Add unidad_administrativa_id to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS unidad_administrativa_id INTEGER REFERENCES unidad_administrativa(id) ON DELETE SET NULL;
 
 -- Update actividades_planeadas to reference proyectos_trimestres if needed
 -- (keeping existing structure for backwards compatibility)

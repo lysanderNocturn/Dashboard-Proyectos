@@ -19,6 +19,7 @@ import {
   Timeline as TimelineIcon,
   Assessment as ReportesIcon,
   Settings as ParametrosIcon,
+  AttachMoney as MoneyIcon,
 } from '@mui/icons-material';
 
 const Navbar = () => {
@@ -37,6 +38,7 @@ const Navbar = () => {
     { path: '/avance', label: 'Avance Trimestral', icon: <TimelineIcon /> },
     { path: '/reportes', label: 'Reportes', icon: <ReportesIcon /> },
     { path: '/parametros', label: 'Parámetros', icon: <ParametrosIcon /> },
+    { path: '/presupuestos', label: 'Presupuestos', icon: <MoneyIcon /> },
     { path: '/usuarios', label: 'Usuarios', icon: <PeopleIcon /> },
   ];
 

@@ -155,7 +155,7 @@ Este proyecto es privado y fue desarrollado para fines institucionales.
 
 ## 🤝 Contribución
 
-Desarrollado por lysanderNocturn (posadanomuertos@gmail.com)
+Desarrollado por Pedro Ruiz. (posadanomuertos@gmail.com)
 
 ---
 

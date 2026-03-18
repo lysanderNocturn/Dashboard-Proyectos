@@ -3,7 +3,8 @@ import api from './api.js';
 export const proyectosService = {
   async getProyectos() {
     const response = await api.get('/proyectos');
-    return response.data;
+    // Handle paginated response format
+    return response.data.data || response.data || [];
   },
 
   async getProyectoById(id) {

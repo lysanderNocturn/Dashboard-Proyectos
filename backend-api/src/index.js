@@ -16,6 +16,9 @@ import actividadesEjecutadasRoutes from './routes/actividadesEjecutadas.routes.j
 import accionesRoutes from './routes/acciones.routes.js';
 import medidasRoutes from './routes/medidas.routes.js';
 import authRoutes from './routes/auth.routes.js';
+// Nuevas rutas para el sistema de mejoras
+import presupuestoAsignacionesRoutes from './routes/presupuestoAsignaciones.routes.js';
+import reportesRoutes from './routes/reportes.routes.js';
 
 // Morgan for logging
 import morgan from 'morgan';
@@ -98,6 +101,9 @@ app.use(actividadesEjecutadasRoutes);
 app.use(accionesRoutes);
 app.use(medidasRoutes);
 app.use(authRoutes);
+// Nuevas rutas del sistema de mejoras
+app.use(presupuestoAsignacionesRoutes);
+app.use(reportesRoutes);
 
 // 404 handler
 app.use((req, res) => {

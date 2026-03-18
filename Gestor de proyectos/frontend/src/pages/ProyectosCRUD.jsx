@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { proyectosService } from '../services/proyectosService.js';
 import { ejeService, unidadService, departamentoService } from '../services/parametrosService.js';
 import { presupuestoService } from '../services/presupuestosService.js';
+import { asignacionesService } from '../services/asignacionesService.js';  // Importar servicio de asignaciones
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   Box,
@@ -87,6 +88,7 @@ const ProyectosCRUD = () => {
     fecha_fin: '',
     ejes_id: '',
     presupuesto_id: '',
+    monto_asignar: '',  // Nuevo campo para especificar monto a asignar
     unidad_administrativa_id: '',
     departamento_id: '',
     accion_id: '',
@@ -97,21 +99,27 @@ const ProyectosCRUD = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [proyectoToDelete, setProyectoToDelete] = useState(null);
 
-  // Generate trimestres
+  // Filtrar presupuestos por departamento seleccionado
+  const presupuestosFiltrados = useMemo(() => {
+    if (!formData.departamento_id) return presupuestos;
+    return presupuestos.filter(pres => 
+      pres.departamento_id === parseInt(formData.departamento_id)
+    );
+  }, [presupuestos, formData.departamento_id]);
+
+  // Generate trimestres - iniciar con objetivos en 0 para que el usuario los defina
   const generateTrimestres = (duracionAnos, metaTotal, medidaTipo) => {
     const trimestres = [];
-    const totalTrimestres = duracionAnos * 4;
-    const metaBase = medidaTipo === 'porcentaje' ? 100 : metaTotal;
-    const metaPorTrimestre = metaBase / totalTrimestres;
-    const porcentajePorTrimestre = 100 / totalTrimestres;
+    // Los objetivosinician en 0 para que el usuario los defina manualmente
+    // y pueda ir aumentando el porcentaje u objetivo que quiera alcanzar
     
     for (let ano = 1; ano <= duracionAnos; ano++) {
       for (let trimestre = 1; trimestre <= 4; trimestre++) {
         trimestres.push({
           ano,
           trimestre,
-          meta: Math.round(metaPorTrimestre * 100) / 100,
-          porcentaje: Math.round(porcentajePorTrimestre * 100) / 100,
+          meta: 0, // Objetivo inicia en 0
+          porcentaje: 0, // Porcentaje inicia en 0
         });
       }
     }
@@ -129,7 +137,6 @@ const ProyectosCRUD = () => {
         unidadService.getUnidades(),
         departamentoService.getDepartamentos()
       ]);
-      console.log('Proyectos cargados:', proyectosData);
       setProyectos(proyectosData || []);
       setEjes(ejesData || []);
       setPresupuestos(presupuestosData || []);
@@ -172,6 +179,10 @@ const ProyectosCRUD = () => {
         fecha_fin: proyecto.fecha_fin ? proyecto.fecha_fin.split('T')[0] : '',
         ejes_id: proyecto.ejes_id || '',
         presupuesto_id: proyecto.presupuesto_id || '',
+        unidad_administrativa_id: proyecto.unidad_administrativa_id || '',
+        departamento_id: proyecto.departamento_id || '',
+        accion_id: proyecto.accion_id || '',
+        medida_id: proyecto.medida_id || '',
         trimestres: existingTrimestres.length > 0 ? existingTrimestres : generateTrimestres(duracion, meta, medida),
       });
     } else {
@@ -452,17 +463,36 @@ const ProyectosCRUD = () => {
                 <Select
                   value={formData.presupuesto_id}
                   label="Presupuesto"
-                  onChange={(e) => setFormData({ ...formData, presupuesto_id: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, presupuesto_id: e.target.value, monto_asignar: '' })}
                 >
                   <MenuItem value=""><em>Seleccionar presupuesto...</em></MenuItem>
-                  {presupuestos.map((pres) => (
-                    <MenuItem key={pres.id} value={pres.id}>
-                      {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(pres.monto)} - {pres.ano}
-                    </MenuItem>
-                  ))}
+                  {presupuestosFiltrados.map((pres) => {
+                    const montoDisponible = (pres.monto || 0) - (pres.monto_asignado || 0);
+                    return (
+                      <MenuItem key={pres.id} value={pres.id}>
+                        ${(pres.monto || 0).toLocaleString('es-MX')} ({pres.ano}) - Disponible: ${montoDisponible.toLocaleString('es-MX')}
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
+            {formData.presupuesto_id && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Monto a Asignar"
+                  type="number"
+                  fullWidth
+                  value={formData.monto_asignar}
+                  onChange={(e) => setFormData({ ...formData, monto_asignar: e.target.value })}
+                  disabled={viewMode}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                  helperText={`Monto disponible: ${((presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto || 0) - (presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto_asignado || 0)).toLocaleString('es-MX')}`}
+                />
+              </Grid>
+            )}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Fecha de Inicio"
@@ -518,17 +548,17 @@ const ProyectosCRUD = () => {
           </Grid>
         );
       
-      case 1:
-        // Step 2: Información Básica (Nombre, Descripción, Fechas)
+      case 2:
+        // Step 2: Información Básica (Objetivo, Descripción, Fechas)
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
                 autoFocus
-                label="Nombre del Proyecto *"
+                label="Objetivo del Proyecto *"
                 fullWidth
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                value={formData.objetivo}
+                onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
                 disabled={viewMode}
                 InputProps={{
                   startAdornment: (
@@ -538,6 +568,8 @@ const ProyectosCRUD = () => {
                   ),
                 }}
               />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              </Typography>
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -896,7 +928,6 @@ const ProyectosCRUD = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {proyecto.objetivo || '-'}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -967,7 +998,18 @@ const ProyectosCRUD = () => {
       </Paper>
 
       {/* Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="lg" 
+        fullWidth 
+        PaperProps={{ 
+          sx: { 
+            borderRadius: 3,
+            maxHeight: '90vh',
+          } 
+        }}
+      >
         <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 1.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight="medium">
@@ -979,22 +1021,143 @@ const ProyectosCRUD = () => {
           </Box>
         </DialogTitle>
         
-        <DialogContent sx={{ pt: 3 }}>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
+        <DialogContent sx={{ pt: 3, overflow: 'auto' }}>
+          {/* View Mode: Show all details in one window */}
+          {viewMode ? (
+            <Box>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                  {error}
+                </Alert>
+              )}
+              
+              {/* Información General */}
+              <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
+                  Información General
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Nombre del Proyecto</Typography>
+                    <Typography variant="body1" fontWeight="medium">{formData.nombre || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Estado</Typography>
+                    <Chip label={formData.estado_actual || 'Sin estado'} color={getEstadoColor(formData.estado_actual)} size="small" />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Unidad Administrativa</Typography>
+                    <Typography variant="body1">{unidades.find(u => u.id === formData.unidad_administrativa_id)?.nombre || 'No seleccionada'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Departamento</Typography>
+                    <Typography variant="body1">{departamentos.find(d => d.id === formData.departamento_id)?.nombre || 'No seleccionado'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Eje</Typography>
+                    <Typography variant="body1">{ejes.find(e => e.id === formData.ejes_id)?.nombre || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Presupuesto</Typography>
+                    <Typography variant="body1">
+                      {formData.presupuesto_id 
+                        ? `${(presupuestos.find(p => p.id === formData.presupuesto_id)?.monto || 0).toLocaleString('es-MX')}` 
+                        : 'Sin presupuesto'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Duración</Typography>
+                    <Typography variant="body1">{formData.duracion_anos} año(s)</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Meta Total</Typography>
+                    <Typography variant="body1">{formData.meta_total} {formData.medida_tipo === 'porcentaje' ? '%' : 'unidades'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Fecha de Inicio</Typography>
+                    <Typography variant="body1">{formData.fecha_inicio ? formatDate(formData.fecha_inicio) : '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Fecha de Fin</Typography>
+                    <Typography variant="body1">{formData.fecha_fin ? formatDate(formData.fecha_fin) : '-'}</Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Objetivo y Descripción */}
+              <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
+                  Objetivo y Descripción
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Objetivo</Typography>
+                    <Typography variant="body1">{formData.objetivo || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Descripción</Typography>
+                    <Typography variant="body1">{formData.descripcion || '-'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Tipo de Medida</Typography>
+                    <Typography variant="body1">{formData.medida_tipo === 'porcentaje' ? 'Porcentaje (%)' : 'Cantidad Numérica'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Evaluación</Typography>
+                    <Typography variant="body1">{formData.evaluacion || '-'}</Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Metas Trimestrales */}
+              <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
+                  Metas Trimestrales
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.100' }}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Año</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Trimestre</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Meta</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Porcentaje</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {formData.trimestres?.map((trimestre, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{trimestre.ano}</TableCell>
+                          <TableCell>T{trimestre.trimestre}</TableCell>
+                          <TableCell>{trimestre.meta}</TableCell>
+                          <TableCell>{trimestre.porcentaje}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Box>
+          ) : (
+            // Edit/Create Mode: Use Stepper
+            <>
+              <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+                {steps.map((label) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+              
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                  {error}
+                </Alert>
+              )}
+              
+              {getStepContent(activeStep)}
+            </>
           )}
-          
-          {getStepContent(activeStep)}
         </DialogContent>
         
         <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
@@ -1007,7 +1170,11 @@ const ProyectosCRUD = () => {
             {viewMode ? 'Cerrar' : 'Cancelar'}
           </Button>
           
-          {!viewMode && (
+          {viewMode ? (
+            // View mode - just show close button
+            <Box sx={{ flex: 1 }} />
+          ) : (
+            // Edit/Create mode - navigation buttons
             <>
               <Box sx={{ flex: 1 }} />
               {activeStep > 0 && (

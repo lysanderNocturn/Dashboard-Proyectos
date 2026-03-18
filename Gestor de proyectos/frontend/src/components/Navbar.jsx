@@ -33,10 +33,9 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { path: '/dashboard', label: 'Inicio', icon: <DashboardIcon /> },
     { path: '/proyectos', label: 'Proyectos', icon: <FolderIcon /> },
     { path: '/avance', label: 'Avance Trimestral', icon: <TimelineIcon /> },
-    { path: '/reportes', label: 'Reportes', icon: <ReportesIcon /> },
     { path: '/parametros', label: 'Parámetros', icon: <ParametrosIcon /> },
     { path: '/presupuestos', label: 'Presupuestos', icon: <MoneyIcon /> },
     { path: '/usuarios', label: 'Usuarios', icon: <PeopleIcon /> },

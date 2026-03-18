@@ -25,6 +25,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -192,22 +193,35 @@ const PresupuestosCRUD = () => {
 
   return (
     <Fade in>
-      <Box>
+      <Box sx={{ px: 3, pb: 3 }}>
         {/* Header */}
         <Paper 
           elevation={0} 
           sx={{ 
-            p: 3, 
+            p: 4, 
             mb: 3, 
+            mt: 3,
             background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
             color: 'white',
-            borderRadius: 2,
+            borderRadius: 4,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(45deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
+              pointerEvents: 'none',
+            }
           }}
         >
-          <Typography variant="h4" component="h1" fontWeight="bold">
+          <Typography variant="h4" component="h1" fontWeight="bold" sx={{ position: 'relative', zIndex: 1 }}>
             Gestión de Presupuestos
           </Typography>
-          <Typography variant="body1" sx={{ opacity: 0.9, mt: 1 }}>
+          <Typography variant="body1" sx={{ opacity: 0.9, mt: 1, position: 'relative', zIndex: 1 }}>
             Administra los presupuestos disponibles para asignar a proyectos
           </Typography>
         </Paper>
@@ -219,8 +233,8 @@ const PresupuestosCRUD = () => {
         )}
 
         {/* Contenido */}
-        <Paper sx={{ borderRadius: 2 }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6" fontWeight="medium">
               Lista de Presupuestos
             </Typography>
@@ -228,6 +242,7 @@ const PresupuestosCRUD = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog(null)}
+              sx={{ borderRadius: 2, px: 3 }}
             >
               Nuevo Presupuesto
             </Button>
@@ -236,39 +251,56 @@ const PresupuestosCRUD = () => {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.100' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Monto</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Año</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Unidad Administrativa</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Departamento</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                <TableRow sx={{ bgcolor: 'grey.50' }}>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>ID</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Monto</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Año</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Unidad Administrativa</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Departamento</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {presupuestos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <Typography color="text.secondary">No hay presupuestos registrados</Typography>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <MoneyIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                        <Typography color="text.secondary">No hay presupuestos registrados</Typography>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
                   presupuestos.map((item) => (
-                    <TableRow key={item.id} hover>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>
-                        <Typography fontWeight="bold" color="primary">
+                    <TableRow 
+                      key={item.id} 
+                      hover
+                      sx={{ '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.04)' } }}
+                    >
+                      <TableCell sx={{ py: 2 }}>{item.id}</TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography fontWeight="bold" color="success.main">
                           {formatearMonto(item.monto)}
                         </Typography>
                       </TableCell>
-                      <TableCell>{item.ano}</TableCell>
-                      <TableCell>{getUnidadNombre(item.unidad_administrativa_id)}</TableCell>
-                      <TableCell>{getDepartamentoNombre(item.departamento_id)}</TableCell>
-                      <TableCell align="center">
-                        <IconButton color="primary" onClick={() => handleOpenDialog(item)}>
+                      <TableCell sx={{ py: 2 }}>
+                        <Chip label={item.ano} size="small" variant="outlined" sx={{ fontWeight: 'medium' }} />
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>{getUnidadNombre(item.unidad_administrativa_id)}</TableCell>
+                      <TableCell sx={{ py: 2 }}>{getDepartamentoNombre(item.departamento_id)}</TableCell>
+                      <TableCell align="center" sx={{ py: 2 }}>
+                        <IconButton 
+                          color="primary" 
+                          onClick={() => handleOpenDialog(item)}
+                          sx={{ '&:hover': { bgcolor: 'primary.light', color: 'white' } }}
+                        >
                           <EditIcon />
                         </IconButton>
-                        <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                        <IconButton 
+                          color="error" 
+                          onClick={() => handleDelete(item.id)}
+                          sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                        >
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
@@ -281,19 +313,30 @@ const PresupuestosCRUD = () => {
         </Paper>
 
         {/* Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" fontWeight="medium">
-                {editingItem ? 'Editar' : 'Nuevo'} Presupuesto
-              </Typography>
-              <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white', 
+            py: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6" fontWeight="medium">
+              {editingItem ? 'Editar' : 'Nuevo'} Presupuesto
+            </Typography>
+            <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
           </DialogTitle>
-          <DialogContent sx={{ pt: 3, pb: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          <DialogContent sx={{ pt: 4, pb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
               <TextField
                 fullWidth
                 label="Monto"
@@ -308,7 +351,10 @@ const PresupuestosCRUD = () => {
                 helperText={formErrors.monto}
                 inputProps={{ min: 0, step: 0.01 }}
                 InputProps={{
-                  startAdornment: <Typography sx={{ mr: 0.5 }}>$</Typography>,
+                  startAdornment: <Typography sx={{ mr: 0.5, fontWeight: 'bold' }}>$</Typography>,
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
                 }}
               />
               <TextField
@@ -322,8 +368,18 @@ const PresupuestosCRUD = () => {
                 error={!!formErrors.ano}
                 helperText={formErrors.ano}
                 inputProps={{ min: 2000, max: 2100 }}
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                }}
               />
-              <FormControl fullWidth variant="outlined" size="medium">
+              <FormControl 
+                fullWidth 
+                variant="outlined" 
+                size="medium"
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                }}
+              >
                 <InputLabel>Unidad Administrativa</InputLabel>
                 <Select
                   value={formData.unidad_administrativa_id || ''}
@@ -342,7 +398,15 @@ const PresupuestosCRUD = () => {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl fullWidth variant="outlined" size="medium" disabled={!formData.unidad_administrativa_id}>
+              <FormControl 
+                fullWidth 
+                variant="outlined" 
+                size="medium" 
+                disabled={!formData.unidad_administrativa_id}
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                }}
+              >
                 <InputLabel>Departamento</InputLabel>
                 <Select
                   value={formData.departamento_id || ''}
@@ -361,12 +425,12 @@ const PresupuestosCRUD = () => {
               </FormControl>
             </Box>
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <DialogActions sx={{ px: 4, pb: 4, pt: 2 }}>
             <Button 
               onClick={handleCloseDialog} 
               color="inherit" 
               variant="outlined"
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 120, borderRadius: 2 }}
             >
               Cancelar
             </Button>
@@ -374,7 +438,7 @@ const PresupuestosCRUD = () => {
               onClick={handleSave} 
               variant="contained" 
               disabled={isLoading}
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 120, borderRadius: 2 }}
             >
               {isLoading ? 'Guardando...' : 'Guardar'}
             </Button>

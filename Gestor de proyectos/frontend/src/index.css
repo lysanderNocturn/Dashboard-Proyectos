@@ -1,7 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    
+    --primary: 350 82% 25%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    
+    --accent: 350 82% 25%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 350 82% 25%;
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+    
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 350 82% 55%;
+    --primary-foreground: 0 0% 10%;
+    
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 63.9%;
+    
+    --accent: 350 82% 55%;
+    --accent-foreground: 0 0% 10%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 350 82% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 400; 
 
   color-scheme: light;
   color: #800020;
@@ -103,12 +180,84 @@ body {
 
 /* Card hover effects */
 .MuiCard-root {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .MuiCard-root:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(128, 0, 32, 0.15) !important;
+}
+
+/* Enhanced Card hover effects */
+.card-hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+.card-hover-scale {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-scale:hover {
+  transform: scale(1.02);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+/* Card glow effect */
+.card-glow {
+  position: relative;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #800020, #a3405c);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+/* Card shine effect */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(30deg);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.5s ease;
+}
+
+.card-shine:hover::after {
+  opacity: 1;
+  transform: rotate(30deg) translateX(100%);
 }
 
 /* Button styles */
@@ -240,4 +389,121 @@ body {
   body {
     background: white !important;
   }
+}
+
+/* Card entrance animations */
+@keyframes cardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cardEnterLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cardEnterRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card-animate-enter {
+  animation: cardEnter 0.4s ease-out forwards;
+}
+
+.card-animate-enter-left {
+  animation: cardEnterLeft 0.4s ease-out forwards;
+}
+
+.card-animate-enter-right {
+  animation: cardEnterRight 0.4s ease-out forwards;
+}
+
+/* Staggered animation delays for card groups */
+.card-stagger-1 { animation-delay: 0.1s; }
+.card-stagger-2 { animation-delay: 0.2s; }
+.card-stagger-3 { animation-delay: 0.3s; }
+.card-stagger-4 { animation-delay: 0.4s; }
+.card-stagger-5 { animation-delay: 0.5s; }
+
+/* Card shadow depth levels */
+.shadow-card-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-card-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-card-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-card-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Card interactive states */
+.card-interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-interactive:active {
+  transform: scale(0.98);
+}
+
+/* Focus ring for cards */
+.card-focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.3);
+}
+
+/* Card status indicator animations */
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-pulse {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+/* Card gradient backgrounds */
+.card-gradient-primary {
+  background: linear-gradient(135deg, #800020 0%, #a3405c 100%);
+}
+
+.card-gradient-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+.card-gradient-warning {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+}
+
+.card-gradient-info {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
 }

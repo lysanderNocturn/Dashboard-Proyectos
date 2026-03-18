@@ -13,13 +13,13 @@ INSERT INTO roles (name, description) VALUES
 
 -- 2. USERS (depends on roles)
 INSERT INTO users (username, email, password_hash, role_id) VALUES
-('admin', 'admin@sistema.gob', '$2b$10$hashplaceholder', 1),
-('admin2', 'admin2@sistema.gob', '$2b$10$sJkuzSzBsbmSmhgPmYCJzu1NrXiAQYDCePKCA/5h3BsAJa/pUTgm.', 1),
-('director.plan', 'director@sistema.gob', '$2b$10$hashplaceholder', 2),
-('coordinador.tec', 'coordinador@sistema.gob', '$2b$10$hashplaceholder', 3),
-('analista1', 'analista1@sistema.gob', '$2b$10$hashplaceholder', 4),
-('analista2', 'analista2@sistema.gob', '$2b$10$hashplaceholder', 4),
-('auditor.ext', 'auditor@sistema.gob', '$2b$10$hashplaceholder', 5);
+('admin', 'admin@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 1),
+('admin2', 'admin2@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 1),
+('director.plan', 'director@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 2),
+('coordinador.tec', 'coordinador@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 3),
+('analista1', 'analista1@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 4),
+('analista2', 'analista2@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 4),
+('auditor.ext', 'auditor@sistema.gob', '$2b$10$BM4OHXmmEYTGhDaWkpaAT.Jc6yD/pHjfGhaPlSPjFOFRBDLDS6nsK', 5);
 
 -- 3. ACCIONES (no dependencies)
 INSERT INTO acciones (description) VALUES

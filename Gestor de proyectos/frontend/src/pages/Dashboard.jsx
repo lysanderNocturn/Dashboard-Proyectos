@@ -48,7 +48,6 @@ const Dashboard = () => {
       setIsLoading(true);
       setError(null);
       const data = await proyectosService.getProyectos();
-      console.log('Dashboard - Proyectos cargados:', data);
       setProyectos(data || []);
     } catch (err) {
       console.error('Error loading projects:', err);
@@ -108,7 +107,7 @@ const Dashboard = () => {
       title: 'Total de Proyectos', 
       value: totalProyectos, 
       icon: <FolderIcon />, 
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      gradient: 'linear-gradient(135deg, #ea6666 0%, #a24b4b 100%)',
       badge: '📊',
       description: 'Proyectos registrados'
     },
@@ -116,7 +115,7 @@ const Dashboard = () => {
       title: 'Proyectos Activos', 
       value: proyectosActivos, 
       icon: <TrendingUpIcon />, 
-      gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+      gradient: 'linear-gradient(135deg, #991111 0%, #ef3838 100%)',
       badge: '✅',
       description: 'En ejecución'
     },
@@ -124,7 +123,7 @@ const Dashboard = () => {
       title: 'Completados', 
       value: proyectosCompletados, 
       icon: <CheckCircleIcon />, 
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      gradient: 'linear-gradient(135deg, #fe4f4f 0%, #fe0000 100%)',
       badge: '🎯',
       description: 'Objetivos alcanzados'
     },
@@ -132,7 +131,7 @@ const Dashboard = () => {
       title: 'Pendientes', 
       value: proyectosPendientes, 
       icon: <TimeIcon />, 
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      gradient: 'linear-gradient(135deg, #fb9393 0%, #f55757 100%)',
       badge: '⏳',
       description: 'Por iniciar'
     },
@@ -140,24 +139,37 @@ const Dashboard = () => {
 
   return (
     <Fade in>
-      <Box>
+      <Box sx={{ px: 3, pb: 3 }}>
         {/* Header */}
         <Paper 
           elevation={0} 
           sx={{ 
             p: 4, 
             mb: 4, 
+            mt: 3,
             background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
             color: 'white',
             borderRadius: 4,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%)',
+              pointerEvents: 'none',
+            }
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, position: 'relative', zIndex: 1 }}>
             <Box>
-              <Typography variant="h3" component="h1" fontWeight="bold">
+              <Typography variant="h3" component="h1" fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                 Dashboard
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
+              <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5, fontSize: '1.1rem' }}>
                 Bienvenido al Sistema de Gestión de Proyectos
               </Typography>
             </Box>
@@ -169,26 +181,36 @@ const Dashboard = () => {
               sx={{ 
                 borderColor: 'rgba(255,255,255,0.5)', 
                 color: 'white',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
+                backdropFilter: 'blur(10px)',
+                '&:hover': { 
+                  borderColor: 'white', 
+                  bgcolor: 'rgba(255,255,255,0.15)' 
+                },
+                borderRadius: 2,
+                px: 3
               }}
             >
               {isLoading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Actualizar'}
             </Button>
           </Box>
           
-          <Box sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2">Progreso General</Typography>
-              <Typography variant="body2" fontWeight="bold">{promedioProgreso.toFixed(1)}%</Typography>
+          <Box sx={{ mt: 4, position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 'medium' }}>Progreso General</Typography>
+              <Typography variant="body2" fontWeight="bold" sx={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>{promedioProgreso.toFixed(1)}%</Typography>
             </Box>
             <LinearProgress 
               variant="determinate" 
               value={Math.min(promedioProgreso, 100)} 
               sx={{ 
-                height: 10, 
-                borderRadius: 5,
+                height: 12, 
+                borderRadius: 6,
                 bgcolor: 'rgba(255,255,255,0.2)',
-                '& .MuiLinearProgress-bar': { bgcolor: 'white', borderRadius: 5 }
+                '& .MuiLinearProgress-bar': { 
+                  bgcolor: '#fff', 
+                  borderRadius: 6,
+                  boxShadow: '0 2px 8px rgba(255,255,255,0.3)'
+                } 
               }}
             />
           </Box>
@@ -201,7 +223,7 @@ const Dashboard = () => {
         )}
 
         {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={4} sx={{ mb: 4 }} justifyContent="center">
           {statCards.map((stat, index) => (
             <Grid item xs={12} sm={6} md={3} key={stat.title}>
               <Zoom in style={{ transitionDelay: `${index * 100}ms` }}>
@@ -213,6 +235,7 @@ const Dashboard = () => {
                     transition: 'all 0.3s ease', 
                     position: 'relative',
                     overflow: 'hidden',
+                    minHeight: 180,
                     '&:hover': { 
                       transform: 'translateY(-8px)', 
                       boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
@@ -226,12 +249,21 @@ const Dashboard = () => {
                     position: 'absolute',
                     top: -20,
                     right: -20,
-                    width: 100,
-                    height: 100,
+                    width: 120,
+                    height: 120,
                     borderRadius: '50%',
                     background: 'rgba(255,255,255,0.1)',
                   }} />
-                  <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+                  <Box sx={{
+                    position: 'absolute',
+                    bottom: -30,
+                    left: -30,
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.05)',
+                  }} />
+                  <CardContent sx={{ p: 3, position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                       <Avatar 
                         className="stat-icon"
@@ -239,7 +271,8 @@ const Dashboard = () => {
                           bgcolor: 'rgba(255,255,255,0.25)', 
                           width: 56, 
                           height: 56,
-                          transition: 'transform 0.3s ease'
+                          transition: 'transform 0.3s ease',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }}
                       >
                         {stat.icon}
@@ -256,15 +289,17 @@ const Dashboard = () => {
                         {stat.badge}
                       </Box>
                     </Box>
-                    <Typography variant="h3" fontWeight="bold" sx={{ mb: 0.5 }}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant="body1" sx={{ opacity: 0.95, fontWeight: 'medium' }}>
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.75, display: 'block', mt: 0.5 }}>
-                      {stat.description}
-                    </Typography>
+                    <Box>
+                      <Typography variant="h3" fontWeight="bold" sx={{ mb: 0.5, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                        {stat.value}
+                      </Typography>
+                      <Typography variant="body1" sx={{ opacity: 0.95, fontWeight: 'medium' }}>
+                        {stat.title}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.75, display: 'block', mt: 0.5 }}>
+                        {stat.description}
+                      </Typography>
+                    </Box>
                   </CardContent>
                 </Card>
               </Zoom>
@@ -281,7 +316,7 @@ const Dashboard = () => {
                 borderRadius: 4, 
                 overflow: 'hidden',
                 transition: 'all 0.3s ease',
-                '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }
+                '&:hover': { boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }
               }}
             >
               <Box sx={{ 
@@ -291,43 +326,53 @@ const Dashboard = () => {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                background: 'linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%)'
+                background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)'
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.main', color: 'white', mr: 2 }}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'white', mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FlagIcon />
                   </Box>
-                  <Typography variant="h6" fontWeight="bold">Proyectos Recientes</Typography>
+                  <Box>
+                    <Typography variant="h6" fontWeight="bold">Proyectos Recientes</Typography>
+                    <Typography variant="caption" color="text.secondary">Lista de proyectos registrados</Typography>
+                  </Box>
                 </Box>
                 <Button 
                   variant="text" 
                   endIcon={<ArrowForwardIcon />} 
                   onClick={() => navigate('/proyectos')}
-                  sx={{ fontWeight: 'medium' }}
+                  sx={{ fontWeight: 'medium', borderRadius: 2 }}
                 >
                   Ver todos
                 </Button>
               </Box>
               
               {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+                  <CircularProgress />
+                </Box>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.50' }}>
-                        <TableCell><strong>Proyecto</strong></TableCell>
-                        <TableCell><strong>Meta</strong></TableCell>
-                        <TableCell><strong>Estado</strong></TableCell>
-                        <TableCell><strong>Progreso</strong></TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Proyecto</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Unidad Adm.</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Departamento</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Meta</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Estado</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Progreso</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {proyectos.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                            <Typography color="text.secondary">No hay proyectos</Typography>
-                            <Button variant="contained" sx={{ mt: 2 }} onClick={() => navigate('/proyectos')}>Crear proyecto</Button>
+                          <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <FolderIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                              <Typography color="text.secondary" gutterBottom>No hay proyectos</Typography>
+                              <Button variant="contained" sx={{ mt: 2, borderRadius: 2 }} onClick={() => navigate('/proyectos')}>Crear proyecto</Button>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -335,24 +380,54 @@ const Dashboard = () => {
                           const meses = Array.isArray(proyecto.trimestres) ? proyecto.trimestres : [];
                           const progreso = Number(meses.reduce((sum, t) => sum + (Number(t.porcentaje) || 0), 0)) || 0;
                           return (
-                            <TableRow key={proyecto.id} hover>
-                              <TableCell>
+                            <TableRow 
+                              key={proyecto.id} 
+                              hover
+                              sx={{ 
+                                '&:hover': { bgcolor: 'rgba(128, 0, 32, 0.04)' },
+                                transition: 'background-color 0.2s ease'
+                              }}
+                            >
+                              <TableCell sx={{ py: 2 }}>
                                 <Typography fontWeight="medium">{proyecto.nombre}</Typography>
                                 <Typography variant="caption" color="text.secondary">{formatDate(proyecto.fecha_inicio)}</Typography>
                               </TableCell>
-                              <TableCell>
-                                <Chip label={`${proyecto.meta_total || 0}${proyecto.medida_tipo === 'porcentaje' ? '%' : ''}`} size="small" color="primary" variant="outlined" />
+                              <TableCell sx={{ py: 2 }}>
+                                <Typography variant="body2">{proyecto.unidad_nombre || '-'}</Typography>
                               </TableCell>
-                              <TableCell>
-                                <Chip label={proyecto.estado_actual || 'Sin estado'} color={getEstadoColor(proyecto.estado_actual)} size="small" />
+                              <TableCell sx={{ py: 2 }}>
+                                <Typography variant="body2">{proyecto.departamento_nombre || '-'}</Typography>
                               </TableCell>
-                              <TableCell>
+                              <TableCell sx={{ py: 2 }}>
+                                <Chip 
+                                  label={`${proyecto.meta_total || 0}${proyecto.medida_tipo === 'porcentaje' ? '%' : ''}`} 
+                                  size="small" 
+                                  color="primary" 
+                                  variant="outlined" 
+                                  sx={{ fontWeight: 'medium' }}
+                                />
+                              </TableCell>
+                              <TableCell sx={{ py: 2 }}>
+                                <Chip 
+                                  label={proyecto.estado_actual || 'Sin estado'} 
+                                  color={getEstadoColor(proyecto.estado_actual)} 
+                                  size="small"
+                                  sx={{ fontWeight: 'medium' }}
+                                />
+                              </TableCell>
+                              <TableCell sx={{ py: 2 }}>
                                 <Tooltip title={`${progreso.toFixed(0)}%`}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ flex: 1, bgcolor: 'grey.200', borderRadius: 1, height: 8, minWidth: 60 }}>
-                                      <Box sx={{ width: `${Math.min(progreso, 100)}%`, bgcolor: progreso >= 100 ? 'success.main' : 'primary.main', height: '100%', borderRadius: 1 }} />
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 100 }}>
+                                    <Box sx={{ flex: 1, bgcolor: 'grey.100', borderRadius: 1.5, height: 10, minWidth: 70 }}>
+                                      <Box sx={{ 
+                                        width: `${Math.min(progreso, 100)}%`, 
+                                        bgcolor: progreso >= 100 ? 'success.main' : 'primary.main', 
+                                        height: '100%', 
+                                        borderRadius: 1.5,
+                                        transition: 'width 0.5s ease'
+                                      }} />
                                     </Box>
-                                    <Typography variant="caption">{progreso.toFixed(0)}%</Typography>
+                                    <Typography variant="body2" fontWeight="medium" sx={{ minWidth: 40 }}>{progreso.toFixed(0)}%</Typography>
                                   </Box>
                                 </Tooltip>
                               </TableCell>
@@ -375,8 +450,9 @@ const Dashboard = () => {
                 borderRadius: 4, 
                 transition: 'all 0.3s ease', 
                 background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)',
+                height: '100%',
                 '&:hover': { 
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                  boxShadow: '0 16px 48px rgba(0,0,0,0.15)',
                   transform: 'translateY(-4px)'
                 } 
               }}
@@ -388,15 +464,23 @@ const Dashboard = () => {
                     borderRadius: 2, 
                     bgcolor: 'primary.main',
                     color: 'white',
-                    mr: 2
+                    mr: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
                     <PieChartIcon />
                   </Box>
-                  <Typography variant="h6" fontWeight="bold">
-                    Resumen de Proyectos
-                  </Typography>
+                  <Box>
+                    <Typography variant="h6" fontWeight="bold">
+                      Resumen de Proyectos
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Estado actual
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box sx={{ my: 2 }}>
+                <Box sx={{ my: 3 }}>
                   {[
                     { estado: 'Activo', color: '#11998e' },
                     { estado: 'En Progreso', color: '#4facfe' },
@@ -408,21 +492,34 @@ const Dashboard = () => {
                     const percentage = totalProyectos > 0 ? (count / totalProyectos) * 100 : 0;
                     return (
                       <Tooltip key={estado} title={`${count} proyecto(s)`} arrow placement="left">
-                        <Box sx={{ mb: 2.5, cursor: 'pointer', transition: 'all 0.2s', '&:hover': { transform: 'scale(1.02)' } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" fontWeight="medium">{estado}</Typography>
+                        <Box sx={{ 
+                          mb: 2.5, 
+                          cursor: 'pointer', 
+                          transition: 'all 0.2s', 
+                          p: 1.5,
+                          borderRadius: 2,
+                          '&:hover': { 
+                            transform: 'scale(1.02)',
+                            bgcolor: 'rgba(0,0,0,0.02)'
+                          } 
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color }} />
+                              <Typography variant="body2" fontWeight="medium">{estado}</Typography>
+                            </Box>
                             <Typography variant="body2" fontWeight="bold" color="primary">{count}</Typography>
                           </Box>
                           <LinearProgress 
                             variant="determinate" 
                             value={percentage} 
                             sx={{ 
-                              height: 8, 
-                              borderRadius: 4,
+                              height: 10, 
+                              borderRadius: 5,
                               bgcolor: 'grey.100',
                               '& .MuiLinearProgress-bar': { 
                                 bgcolor: color,
-                                borderRadius: 4,
+                                borderRadius: 5,
                                 transition: 'width 0.5s ease'
                               } 
                             }} 
@@ -432,9 +529,9 @@ const Dashboard = () => {
                     );
                   })}
                 </Box>
-                <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    <CalendarIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+                <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarIcon sx={{ fontSize: 16 }} />
                     Actualizado: {new Date().toLocaleDateString('es-ES')}
                   </Typography>
                   <Chip 

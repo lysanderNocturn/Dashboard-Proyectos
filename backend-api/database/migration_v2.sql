@@ -16,7 +16,7 @@ ADD COLUMN IF NOT EXISTS medida_tipo VARCHAR(20) CHECK (medida_tipo IN ('cantida
 ADD COLUMN IF NOT EXISTS fecha_inicio DATE,
 ADD COLUMN IF NOT EXISTS fecha_fin DATE;
 
--- Create table for project trimestre distribution
+-- Create table for project trimester distribution
 CREATE TABLE IF NOT EXISTS proyectos_trimestres (
     id SERIAL PRIMARY KEY,
     proyecto_id INTEGER REFERENCES proyectos(id) ON DELETE CASCADE,
@@ -38,12 +38,21 @@ CREATE INDEX IF NOT EXISTS idx_proyectos_unidad ON proyectos(unidad_administrati
 -- Add unidad_administrativa_id to users table
 ALTER TABLE users ADD COLUMN IF NOT EXISTS unidad_administrativa_id INTEGER REFERENCES unidad_administrativa(id) ON DELETE SET NULL;
 
+-- Update actividades_planeadas meta_trimestral columns to have DEFAULT 0
+-- This ensures new activities start with 0 as the objective for each quarter
+-- so users can define them incrementally as the project progresses
+ALTER TABLE actividades_planeadas 
+ALTER COLUMN meta_trimestral1 SET DEFAULT 0,
+ALTER COLUMN meta_trimestral2 SET DEFAULT 0,
+ALTER COLUMN meta_trimestral3 SET DEFAULT 0,
+ALTER COLUMN meta_trimestral4 SET DEFAULT 0;
+
 -- Update actividades_planeadas to reference proyectos_trimestres if needed
 -- (keeping existing structure for backwards compatibility)
 
 -- Add comments for documentation
 COMMENT ON COLUMN proyectos.objetivo IS 'Objetivo general del proyecto';
 COMMENT ON COLUMN proyectos.meta_total IS 'Meta total a alcanzar (cantidad o porcentaje)';
-COMMENT ON COLUMN proyectos.duracion_anos IS 'Duración del proyecto en años (máximo 3)';
+COMMENT ON COLUMN proyectos.duracion_anos IS 'Duracion del proyecto en anos (maximo 3)';
 COMMENT ON COLUMN proyectos.medida_tipo IS 'Tipo de medida: cantidad o porcentaje';
-COMMENT ON TABLE proyectos_trimestres IS 'Distribución de metas por año y trimestre';
+COMMENT ON TABLE proyectos_trimestres IS 'Distribucion de metas por ano y trimestre';

@@ -38,6 +38,9 @@ import {
   Email as EmailIcon,
   AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
+import {
+  Avatar,
+} from '@mui/material';
 
 const UsuariosCRUD = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -200,19 +203,32 @@ const UsuariosCRUD = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ px: 3, pb: 3 }}>
       {/* Header */}
       <Paper 
         elevation={0} 
         sx={{ 
-          p: 3, 
+          p: 4, 
           mb: 3, 
+          mt: 3,
           background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
           color: 'white',
-          borderRadius: 3
+          borderRadius: 4,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(45deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
+            pointerEvents: 'none',
+          }
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, position: 'relative', zIndex: 1 }}>
           <Box>
             <Typography variant="h4" component="h1" fontWeight="bold">
               Gestión de Usuarios
@@ -230,7 +246,10 @@ const UsuariosCRUD = () => {
               sx={{ 
                 borderColor: 'rgba(255,255,255,0.5)', 
                 color: 'white',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
+                backdropFilter: 'blur(10px)',
+                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.15)' },
+                borderRadius: 2,
+                px: 3
               }}
             >
               Actualizar
@@ -242,7 +261,10 @@ const UsuariosCRUD = () => {
               sx={{ 
                 bgcolor: 'white', 
                 color: 'primary.main',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' }
+                fontWeight: 'bold',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                borderRadius: 2,
+                px: 3
               }}
             >
               Nuevo Usuario
@@ -260,7 +282,7 @@ const UsuariosCRUD = () => {
       {/* Users Table */}
       <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
         {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
             <CircularProgress />
           </Box>
         ) : (
@@ -268,55 +290,77 @@ const UsuariosCRUD = () => {
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell><strong>Usuario</strong></TableCell>
-                  <TableCell><strong>Email</strong></TableCell>
-                  <TableCell><strong>Rol</strong></TableCell>
-                  <TableCell><strong>Creado</strong></TableCell>
-                  <TableCell align="center"><strong>Acciones</strong></TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Usuario</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Rol</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Creado</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {usuarios.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                      <Typography color="text.secondary">No hay usuarios registrados</Typography>
-                      <Button variant="contained" sx={{ mt: 2 }} onClick={() => handleOpenDialog()}>
-                        Crear Usuario
-                      </Button>
+                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <PersonIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                        <Typography color="text.secondary">No hay usuarios registrados</Typography>
+                        <Button variant="contained" sx={{ mt: 2, borderRadius: 2 }} onClick={() => handleOpenDialog()}>
+                          Crear Usuario
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
                   usuarios.map((usuario) => (
-                    <TableRow key={usuario.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <PersonIcon color="action" />
+                    <TableRow 
+                      key={usuario.id} 
+                      hover
+                      sx={{ '&:hover': { bgcolor: 'rgba(128, 0, 32, 0.04)' } }}
+                    >
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.light', fontSize: '0.875rem' }}>
+                            {usuario.username?.charAt(0).toUpperCase()}
+                          </Avatar>
                           <Typography fontWeight="medium">{usuario.username}</Typography>
                         </Box>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <EmailIcon fontSize="small" color="action" />
                           {usuario.email}
                         </Box>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 2 }}>
                         <Chip 
                           label={getRoleName(usuario.role_id)} 
                           color={getRoleColor(usuario.role_id)}
                           size="small"
                           icon={<AdminIcon />}
+                          sx={{ fontWeight: 'medium' }}
                         />
                       </TableCell>
-                      <TableCell>{formatDate(usuario.created_at)}</TableCell>
-                      <TableCell align="center">
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2">{formatDate(usuario.created_at)}</Typography>
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 2 }}>
                         <Tooltip title="Editar">
-                          <IconButton color="primary" onClick={() => handleOpenDialog(usuario)} size="small">
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleOpenDialog(usuario)} 
+                            size="small"
+                            sx={{ '&:hover': { bgcolor: 'primary.light', color: 'white' } }}
+                          >
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Eliminar">
-                          <IconButton color="error" onClick={() => handleDeleteClick(usuario)} size="small">
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleDeleteClick(usuario)} 
+                            size="small"
+                            sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                          >
                             <DeleteIcon />
                           </IconButton>
                         </Tooltip>

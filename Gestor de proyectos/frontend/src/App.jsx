@@ -100,7 +100,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="proyectos" element={<ProyectosCRUD />} />
               <Route path="avance" element={<AvanceTrimestral />} />
-              <Route path="reportes" element={<Reportes />} />
+              <Route path="reportes" element={<Navigate to="/avance" replace />} />
               <Route path="parametros" element={<Parametros />} />
               <Route path="presupuestos" element={<PresupuestosCRUD />} />
               <Route path="usuarios" element={<UsuariosCRUD />} />

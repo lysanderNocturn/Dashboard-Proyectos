@@ -13,6 +13,15 @@ const safeTrimestres = (trimestres) => {
 
 export const getProyectos = async (req, res) => {
   try {
+    // Support pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const countResult = await pool.query('SELECT COUNT(*) FROM proyectos');
+    const total = parseInt(countResult.rows[0].count);
+    
     // Optimized: Use a single query with LEFT JOIN to avoid N+1 query problem
     const { rows } = await pool.query(`
       SELECT p.*, 
@@ -36,9 +45,18 @@ export const getProyectos = async (req, res) => {
       LEFT JOIN proyectos_trimestres pt ON p.id = pt.proyecto_id
       GROUP BY p.id, pr.monto, pr.ano, u.nombre, d.nombre
       ORDER BY p.created_at DESC
-    `);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
     
-    res.json(rows);
+    res.json({
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Error al obtener proyectos:', error);
     res.status(500).json({ message: "Error al obtener los proyectos", error: error.message });
@@ -111,6 +129,11 @@ export const createProyecto = async (req, res) => {
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
       { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
       { name: 'presupuesto_id', value: data.presupuesto_id || null },
+      { name: 'unidad_administrativa_id', value: data.unidad_administrativa_id || null },
+      { name: 'departamento_id', value: data.departamento_id || null },
+      { name: 'ejes_id', value: data.ejes_id || null },
+      { name: 'accion_id', value: data.accion_id || null },
+      { name: 'medida_id', value: data.medida_id || null },
     ];
     
     for (const field of optionalFields) {
@@ -207,7 +230,12 @@ export const updateProyecto = async (req, res) => {
       { name: 'medida_tipo', value: data.medida_tipo },
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
       { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
-      { name: 'presupuesto_id', value: data.presupuesto_id || null }
+      { name: 'presupuesto_id', value: data.presupuesto_id || null },
+      { name: 'unidad_administrativa_id', value: data.unidad_administrativa_id || null },
+      { name: 'departamento_id', value: data.departamento_id || null },
+      { name: 'ejes_id', value: data.ejes_id || null },
+      { name: 'accion_id', value: data.accion_id || null },
+      { name: 'medida_id', value: data.medida_id || null },
     ];
     
     for (const field of fields) {

@@ -175,22 +175,35 @@ const Parametros = () => {
 
   return (
     <Fade in>
-      <Box>
+      <Box sx={{ px: 3, pb: 3 }}>
         {/* Header */}
         <Paper 
           elevation={0} 
           sx={{ 
-            p: 3, 
+            p: 4, 
             mb: 3, 
+            mt: 3,
             background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
             color: 'white',
-            borderRadius: 2,
+            borderRadius: 4,
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(45deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
+              pointerEvents: 'none',
+            }
           }}
         >
-          <Typography variant="h4" component="h1" fontWeight="bold">
+          <Typography variant="h4" component="h1" fontWeight="bold" sx={{ position: 'relative', zIndex: 1 }}>
             Parámetros del Sistema
           </Typography>
-          <Typography variant="body1" sx={{ opacity: 0.9, mt: 1 }}>
+          <Typography variant="body1" sx={{ opacity: 0.9, mt: 1, position: 'relative', zIndex: 1 }}>
             Administra las unidades administrativas, departamentos y ejes
           </Typography>
         </Paper>
@@ -202,29 +215,59 @@ const Parametros = () => {
         )}
 
         {/* Tabs */}
-        <Paper sx={{ borderRadius: 2, mb: 3 }}>
+        <Paper sx={{ borderRadius: 3, mb: 3, overflow: 'hidden' }}>
           <Tabs 
             value={tab} 
             onChange={(e, v) => setTab(v)}
             variant="fullWidth"
             sx={{
-              '& .MuiTab-root': { fontWeight: 'bold' },
+              minHeight: 64,
+              '& .MuiTab-root': { 
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                minHeight: 64,
+                py: 1.5,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(128, 0, 32, 0.04)',
+                }
+              },
               '& .Mui-selected': { color: 'primary.main' },
+              '& .MuiTabs-indicator': {
+                height: 4,
+                borderRadius: '4px 4px 0 0',
+              },
             }}
           >
-            <Tab icon={<UnidadIcon />} label="Unidades Administrativas" />
-            <Tab icon={<DepartamentoIcon />} label="Departamentos" />
-            <Tab icon={<EjeIcon />} label="Ejes" />
+            <Tab 
+              icon={<UnidadIcon />} 
+              label="Unidades" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab 
+              icon={<DepartamentoIcon />} 
+              label="Departamentos" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab 
+              icon={<EjeIcon />} 
+              label="Ejes" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
           </Tabs>
         </Paper>
 
         {/* Contenido */}
-        <Paper sx={{ borderRadius: 2 }}>
-          <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog(null, tab)}
+              sx={{ borderRadius: 2, px: 3 }}
             >
               Agregar
             </Button>
@@ -235,31 +278,46 @@ const Parametros = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.100' }}>
-                    <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Nombre</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Descripción</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Nombre</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Descripción</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {unidades.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">No hay unidades administrativas</Typography>
+                      <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <UnidadIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                          <Typography color="text.secondary">No hay unidades administrativas</Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
                     unidades.map((item) => (
-                      <TableRow key={item.id} hover>
-                        <TableCell>{item.id}</TableCell>
-                        <TableCell><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
-                        <TableCell>{item.descripcion}</TableCell>
-                        <TableCell align="center">
-                          <IconButton color="primary" onClick={() => handleOpenDialog(item, tab)}>
+                      <TableRow 
+                        key={item.id} 
+                        hover
+                        sx={{ '&:hover': { bgcolor: 'rgba(128, 0, 32, 0.04)' } }}
+                      >
+                        <TableCell sx={{ py: 2 }}>{item.id}</TableCell>
+                        <TableCell sx={{ py: 2 }}><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
+                        <TableCell sx={{ py: 2 }}>{item.descripcion}</TableCell>
+                        <TableCell align="center" sx={{ py: 2 }}>
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleOpenDialog(item, tab)}
+                            sx={{ '&:hover': { bgcolor: 'primary.light', color: 'white' } }}
+                          >
                             <EditIcon />
                           </IconButton>
-                          <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleDelete(item.id)}
+                            sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                          >
                             <DeleteIcon />
                           </IconButton>
                         </TableCell>
@@ -276,33 +334,48 @@ const Parametros = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.100' }}>
-                    <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Nombre</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Unidad Administrativa</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Descripción</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Nombre</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Unidad Administrativa</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Descripción</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {departamentos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">No hay departamentos</Typography>
+                      <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <DepartamentoIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                          <Typography color="text.secondary">No hay departamentos</Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
                     departamentos.map((item) => (
-                      <TableRow key={item.id} hover>
-                        <TableCell>{item.id}</TableCell>
-                        <TableCell><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
-                        <TableCell>{getUnidadNombre(item.unidad_administrativa_id)}</TableCell>
-                        <TableCell>{item.descripcion}</TableCell>
-                        <TableCell align="center">
-                          <IconButton color="primary" onClick={() => handleOpenDialog(item, tab)}>
+                      <TableRow 
+                        key={item.id} 
+                        hover
+                        sx={{ '&:hover': { bgcolor: 'rgba(128, 0, 32, 0.04)' } }}
+                      >
+                        <TableCell sx={{ py: 2 }}>{item.id}</TableCell>
+                        <TableCell sx={{ py: 2 }}><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
+                        <TableCell sx={{ py: 2 }}>{getUnidadNombre(item.unidad_administrativa_id)}</TableCell>
+                        <TableCell sx={{ py: 2 }}>{item.descripcion}</TableCell>
+                        <TableCell align="center" sx={{ py: 2 }}>
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleOpenDialog(item, tab)}
+                            sx={{ '&:hover': { bgcolor: 'primary.light', color: 'white' } }}
+                          >
                             <EditIcon />
                           </IconButton>
-                          <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleDelete(item.id)}
+                            sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                          >
                             <DeleteIcon />
                           </IconButton>
                         </TableCell>
@@ -319,33 +392,48 @@ const Parametros = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.100' }}>
-                    <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Nombre</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Descripción</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Año</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Nombre</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Descripción</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Año</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {ejes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">No hay ejes</Typography>
+                      <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <EjeIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                          <Typography color="text.secondary">No hay ejes</Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
                     ejes.map((item) => (
-                      <TableRow key={item.id} hover>
-                        <TableCell>{item.id}</TableCell>
-                        <TableCell><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
-                        <TableCell>{item.descripcion}</TableCell>
-                        <TableCell>{item.ano}</TableCell>
-                        <TableCell align="center">
-                          <IconButton color="primary" onClick={() => handleOpenDialog(item, tab)}>
+                      <TableRow 
+                        key={item.id} 
+                        hover
+                        sx={{ '&:hover': { bgcolor: 'rgba(128, 0, 32, 0.04)' } }}
+                      >
+                        <TableCell sx={{ py: 2 }}>{item.id}</TableCell>
+                        <TableCell sx={{ py: 2 }}><Typography fontWeight="medium">{item.nombre}</Typography></TableCell>
+                        <TableCell sx={{ py: 2 }}>{item.descripcion}</TableCell>
+                        <TableCell sx={{ py: 2 }}>{item.ano}</TableCell>
+                        <TableCell align="center" sx={{ py: 2 }}>
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleOpenDialog(item, tab)}
+                            sx={{ '&:hover': { bgcolor: 'primary.light', color: 'white' } }}
+                          >
                             <EditIcon />
                           </IconButton>
-                          <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleDelete(item.id)}
+                            sx={{ '&:hover': { bgcolor: 'error.light', color: 'white' } }}
+                          >
                             <DeleteIcon />
                           </IconButton>
                         </TableCell>
@@ -359,21 +447,34 @@ const Parametros = () => {
         </Paper>
 
         {/* Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" fontWeight="medium">
-                {editingItem ? 'Editar' : 'Nuevo'} {' '}
-                {tab === 0 ? 'Unidad Administrativa' : 
-                 tab === 1 ? 'Departamento' : 'Eje'}
-              </Typography>
-              <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{ 
+            sx: { borderRadius: 3 } 
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white', 
+            py: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6" fontWeight="medium">
+              {editingItem ? 'Editar' : 'Nuevo'} {' '}
+              {tab === 0 ? 'Unidad Administrativa' : 
+               tab === 1 ? 'Departamento' : 'Eje'}
+            </Typography>
+            <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
+              <CloseIcon />
+            </IconButton>
           </DialogTitle>
-          <DialogContent sx={{ pt: 3, pb: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          <DialogContent sx={{ pt: 4, pb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
               <TextField
                 fullWidth
                 label="Nombre"
@@ -383,6 +484,9 @@ const Parametros = () => {
                 required
                 variant="outlined"
                 size="medium"
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                }}
               />
               <TextField
                 fullWidth
@@ -394,9 +498,19 @@ const Parametros = () => {
                 variant="outlined"
                 size="medium"
                 placeholder="Ingrese una descripción"
+                sx={{
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                }}
               />
               {tab === 1 && (
-                <FormControl fullWidth variant="outlined" size="medium">
+                <FormControl 
+                  fullWidth 
+                  variant="outlined" 
+                  size="medium"
+                  sx={{
+                    '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                  }}
+                >
                   <InputLabel>Unidad Administrativa</InputLabel>
                   <Select
                     value={formData.unidad_administrativa_id || ''}
@@ -422,16 +536,19 @@ const Parametros = () => {
                   variant="outlined"
                   size="medium"
                   inputProps={{ min: 2000, max: 2100 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                  }}
                 />
               )}
             </Box>
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <DialogActions sx={{ px: 4, pb: 4, pt: 2 }}>
             <Button 
               onClick={handleCloseDialog} 
               color="inherit" 
               variant="outlined"
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 120, borderRadius: 2 }}
             >
               Cancelar
             </Button>
@@ -439,7 +556,7 @@ const Parametros = () => {
               onClick={handleSave} 
               variant="contained" 
               disabled={isLoading}
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 120, borderRadius: 2 }}
             >
               {isLoading ? 'Guardando...' : 'Guardar'}
             </Button>

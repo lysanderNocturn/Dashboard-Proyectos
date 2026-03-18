@@ -75,49 +75,86 @@ const Login = () => {
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
         p: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: '-50%',
+          left: '-50%',
+          width: '200%',
+          height: '200%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 50%)',
+          animation: 'pulse 15s infinite',
+        },
       }}
     >
       <Paper
         elevation={8}
         sx={{
-          p: 4,
-          maxWidth: 420,
+          p: 5,
+          maxWidth: 450,
           width: '100%',
-          borderRadius: 3,
-          animation: 'fadeIn 0.5s ease-out',
+          borderRadius: 4,
+          position: 'relative',
+          overflow: 'hidden',
+          animation: 'fadeIn 0.6s ease-out',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: 'linear-gradient(90deg, #800020 0%, #a24b4b 50%, #800020 100%)',
+          }
         }}
       >
         {/* Logo/Brand */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Box
             sx={{
-              width: 70,
-              height: 70,
-              borderRadius: 2,
+              width: 80,
+              height: 80,
+              borderRadius: 3,
               bgcolor: 'primary.main',
               color: 'white',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               mx: 'auto',
-              mb: 2,
-              fontSize: '1.5rem',
+              mb: 3,
+              fontSize: '1.75rem',
               fontWeight: 'bold',
-              boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+              boxShadow: '0 8px 24px rgba(128, 0, 32, 0.35)',
+              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: '0 12px 32px rgba(128, 0, 32, 0.45)',
+              }
             }}
           >
             GP
           </Box>
-          <Typography variant="h4" component="h1" fontWeight="bold" color="primary">
+          <Typography variant="h4" component="h1" fontWeight="bold" color="primary" sx={{ mb: 0.5 }}>
             Gestor de Proyectos
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
             Sistema de Planificación y Gestión
           </Typography>
         </Box>
 
         {(loginError || authError) && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLoginError(null)}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3, 
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'error.light'
+            }} 
+            onClose={() => setLoginError(null)}
+          >
             {loginError || authError}
           </Alert>
         )}
@@ -139,6 +176,15 @@ const Login = () => {
                   <PersonIcon color="action" />
                 </InputAdornment>
               ),
+            }}
+            sx={{ 
+              mb: 2.5,
+              '& .MuiOutlinedInput-root': { 
+                borderRadius: 2,
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                }
+              }
             }}
           />
           
@@ -171,6 +217,15 @@ const Login = () => {
                 </InputAdornment>
               ),
             }}
+            sx={{ 
+              mb: 3,
+              '& .MuiOutlinedInput-root': { 
+                borderRadius: 2,
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                }
+              }
+            }}
           />
           
           <Button
@@ -180,14 +235,21 @@ const Login = () => {
             size="large"
             disabled={isLoading}
             sx={{
-              mt: 3,
-              mb: 2,
-              py: 1.5,
+              mt: 1,
+              mb: 3,
+              py: 1.75,
               fontWeight: 'bold',
-              boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+              fontSize: '1rem',
+              borderRadius: 2,
+              boxShadow: '0 4px 14px rgba(128, 0, 32, 0.35)',
+              transition: 'all 0.3s ease',
               '&:hover': {
-                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.5)',
+                boxShadow: '0 6px 20px rgba(128, 0, 32, 0.45)',
+                transform: 'translateY(-2px)',
               },
+              '&:disabled': {
+                boxShadow: 'none',
+              }
             }}
           >
             {isLoading ? (

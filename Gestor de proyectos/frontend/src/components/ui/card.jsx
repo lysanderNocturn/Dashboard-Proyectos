@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 /**
  * Card Component with multiple variants and enhanced UI/UX
  * 
- * Variants:
+ * Variants:  
  * - default: Standard card with subtle shadow
  * - elevated: Enhanced shadow for depth
  * - interactive: Clickable card with hover effects

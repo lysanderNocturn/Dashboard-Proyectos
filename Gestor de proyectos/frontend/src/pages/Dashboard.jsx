@@ -167,10 +167,10 @@ const Dashboard = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, position: 'relative', zIndex: 1 }}>
             <Box>
               <Typography variant="h3" component="h1" fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                Dashboard
+                POA
               </Typography>
               <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5, fontSize: '1.1rem' }}>
-                Bienvenido al Sistema de Gestión de Proyectos
+                Bienvenido al Sistema de Proyectos Presupuestales
               </Typography>
             </Box>
             <Button
@@ -320,16 +320,17 @@ const Dashboard = () => {
               }}
             >
               <Box sx={{ 
-                p: 3, 
+                p: 2, 
+                mg: 3,
                 borderBottom: '1px solid', 
                 borderColor: 'divider', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)'
+                background: 'linear-gradient(135deg, #ea6666 15%, #ffffff 100%)'
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'white', mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.main', color: 'white', mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FlagIcon />
                   </Box>
                   <Box>

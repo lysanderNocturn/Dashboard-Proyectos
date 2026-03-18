@@ -258,10 +258,10 @@ const AvanceTrimestral = () => {
     };
   };
 
-  // // Filtrar actividades por año del trimestre seleccionado
-  // const actividadesFiltradas = actividadesPlanificadas.filter(
-  //   (ap) => ap.ano === getAnoYTrimestre(trimestreActual).ano
-  // );
+  // Filtrar actividades por año del trimestre seleccionado
+  const actividadesFiltradas = actividadesPlanificadas.filter(
+    (ap) => ap.ano === getAnoYTrimestre(trimestreActual).ano
+  );
 
   // Obtener el proyecto seleccionado con todos sus datos
   const proyectoSeleccionado = proyectos.find(p => p.id === selectedProyecto);
@@ -482,7 +482,7 @@ const AvanceTrimestral = () => {
                     </Box>
                     
                     {/* Trimestres del Año */}
-                    <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
+                    <Box sx={{ borderBottom: .5, borderColor: 'divider', bgcolor: 'grey.50' }}>
                       <Grid container>
                         {[1, 2, 3, 4].map((tr) => {
                           const trimestreGlobal = (ano - 1) * 4 + tr;
@@ -495,7 +495,7 @@ const AvanceTrimestral = () => {
                             <Grid item xs={6} md={3} key={trimestreGlobal}>
                               <Box
                                 sx={{
-                                  p: 2,
+                                  p: 1,
                                   textAlign: 'center',
                                   cursor: 'pointer',
                                   bgcolor: trimestreActual === trimestreGlobal ? 'primary.main' : 'transparent',
@@ -509,23 +509,23 @@ const AvanceTrimestral = () => {
                                 onClick={() => setTrimestreActual(trimestreGlobal)}
                               >
                                 <Typography variant="subtitle1" fontWeight="bold">
-                                  T{tr}
+                                  Trimestre {tr}
                                 </Typography>
                                 <Box sx={{ mt: 1 }}>
                                   <LinearProgress
                                     variant="determinate"
                                     value={promedioTrimestre}
                                     sx={{
-                                      height: 8,
-                                      borderRadius: 4,
+                                      height: 10,
+                                      borderRadius: .5,
                                       bgcolor: trimestreActual === trimestreGlobal ? 'rgba(255,255,255,0.3)' : 'grey.200',
                                       '& .MuiLinearProgress-bar': {
                                         bgcolor: trimestreActual === trimestreGlobal ? 'white' : 'primary.main',
-                                        borderRadius: 4,
+                                        borderRadius: .5,
                                       },
                                     }}
                                   />
-                                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', opacity: 0.9 }}>
+                                  <Typography variant="caption" sx={{ mt: .25, display: 'block', opacity: 0.9 }}>
                                     {promedioTrimestre.toFixed(0)}%
                                   </Typography>
                                 </Box>
@@ -587,7 +587,7 @@ const AvanceTrimestral = () => {
                           {avanceProyecto.avanceTrimestre(trimestreActual).toFixed(2)} {avanceProyecto.medidaTipo === 'porcentaje' ? '%' : 'uds'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          vs {avanceProyecto.metaTrimestralEsperada.toFixed(2)} esperado
+                      a lo {avanceProyecto.metaTrimestralEsperada.toFixed(2)} esperado
                         </Typography>
                       </CardContent>
                     </Card>
@@ -612,7 +612,7 @@ const AvanceTrimestral = () => {
                 {/* Indicador visual de avance vs esperado */}
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-                    Progreso esperado vs real (Trimestre {trimestreActual}):
+                    Progreso esperado contra real (Trimestre {trimestreActual}):
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>

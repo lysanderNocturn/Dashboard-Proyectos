@@ -16,11 +16,11 @@ export const getActividadEjecutadaById = async (req, res) => {
 
 export const createActividadEjecutada = async (req, res) => {
     try {
-        const { actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by } = req.body;
+        const { actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta } = req.body;
         const { rows } = await pool.query(
-            `INSERT INTO actividades_ejecutadas (actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by]
+            `INSERT INTO actividades_ejecutadas (actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+            [actividad_planeada_id || req.body.actividad_planificada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta]
         );
         return res.status(201).json(rows[0]);
     } catch (error) {
@@ -32,10 +32,12 @@ export const createActividadEjecutada = async (req, res) => {
 export const updateActividadEjecutada = async (req, res) => {
     try {
         const { id } = req.params;
-        const { actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by } = req.body;
+        const { actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta } = req.body;
+        // Handle both field names - actividad_planeada_id (backend) or actividad_planificada_id (frontend)
+        const planeadaId = actividad_planeada_id || req.body.actividad_planificada_id;
         const { rows, rowCount } = await pool.query(
-            `UPDATE actividades_ejecutadas SET actividad_planeada_id = $1, trimestre = $2, real_actualizado = $3, porcentaje_cumplimiento = $4, observaciones = $5, evidencia = $6, calificacion = $7, updated_by = $8 WHERE id = $9 RETURNING *`,
-            [actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, id]
+            `UPDATE actividades_ejecutadas SET actividad_planeada_id = $1, trimestre = $2, real_actualizado = $3, porcentaje_cumplimiento = $4, observaciones = $5, evidencia = $6, calificacion = $7, updated_by = $8, razon = $9, obstaculos = $10, documentacion_adjunta = $11 WHERE id = $12 RETURNING *`,
+            [planeadaId, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta, id]
         );
         if (rowCount === 0) {
             return res.status(404).json({ message: "Actividad Ejecutada not found" });

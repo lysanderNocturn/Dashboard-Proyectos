@@ -11,25 +11,32 @@ import {
 
 const router = Router();
 
-// Obtener todos los reportes (con filtros)
-router.get('/reportes', getReportes);
-
-// Obtener reportes por unidad administrativa
-router.get('/reportes/unidad/:unidad_id', getReportesByUnidad);
+// Rutas específicas primero (orden es importante en Express)
 
 // Obtener reportes por proyecto
-router.get('/reportes/proyecto/:proyecto_id', getReportesByProyecto);
+router.get('/proyecto/:proyecto_id', getReportesByProyecto);
+
+// Obtener reportes por unidad administrativa
+router.get('/unidad/:unidad_id', getReportesByUnidad);
 
 // Obtener reporte por ID
-router.get('/reportes/:id', getReporteById);
+router.get('/:id', getReporteById);
+
+// Obtener todos los reportes (con filtros)
+router.get('/', getReportes);
 
 // Crear reporte
-router.post('/reportes', createReporte);
+router.post('/', createReporte);
 
 // Actualizar reporte
-router.put('/reportes/:id', updateReporte);
+router.put('/:id', updateReporte);
 
 // Eliminar reporte
-router.delete('/reportes/:id', deleteReporte);
+router.delete('/:id', deleteReporte);
+
+// Ruta de prueba
+router.get('/test', (req, res) => {
+    res.json({ message: 'Rutas de reportes funcionando' });
+});
 
 export default router;

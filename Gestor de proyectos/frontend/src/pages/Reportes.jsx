@@ -51,6 +51,7 @@ const Reportes = () => {
   // Estado para el modal de gestionar reportes
   const [openReportesModal, setOpenReportesModal] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
+  const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -606,9 +607,10 @@ const Reportes = () => {
         <GestionarReportesModal
           isOpen={openReportesModal}
           onClose={() => setOpenReportesModal(false)}
-          proyecto={proyectoSeleccionado}
-          onReportesActualizados={() => {
-            // Recargar datos si es necesario
+          proyectoId={proyectoSeleccionado?.id}
+          onReporteSeleccionado={(reporte) => {
+            setReporteSeleccionado(reporte);
+            setOpenReportesModal(false);
           }}
         />
       </Box>

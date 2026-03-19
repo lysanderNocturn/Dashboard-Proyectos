@@ -167,10 +167,10 @@ const Dashboard = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, position: 'relative', zIndex: 1 }}>
             <Box>
               <Typography variant="h3" component="h1" fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                POA
+                Programa Operativo Anual 
               </Typography>
               <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5, fontSize: '1.1rem' }}>
-                Bienvenido al Sistema de Proyectos Presupuestales
+                Bienvenido al Sistema de Programa Operativo Anual
               </Typography>
             </Box>
             <Button

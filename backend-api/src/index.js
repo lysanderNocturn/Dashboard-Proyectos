@@ -16,7 +16,6 @@ import actividadesEjecutadasRoutes from './routes/actividadesEjecutadas.routes.j
 import accionesRoutes from './routes/acciones.routes.js';
 import medidasRoutes from './routes/medidas.routes.js';
 import authRoutes from './routes/auth.routes.js';
-// Nuevas rutas para el sistema de mejoras
 import presupuestoAsignacionesRoutes from './routes/presupuestoAsignaciones.routes.js';
 import reportesRoutes from './routes/reportes.routes.js';
 
@@ -89,21 +88,21 @@ app.get('/api', (req, res) => {
 });
 
 // API Routes
-app.use(userRoutes);
-app.use(unidadAdministrativaRoutes);
-app.use(proyectoRoutes);
-app.use(rolesRoutes);
-app.use(ejesRoutes);
-app.use(departamentosRoutes);
-app.use(presupuestosRoutes);
-app.use(actividadesPlanificadasRoutes);
-app.use(actividadesEjecutadasRoutes);
-app.use(accionesRoutes);
-app.use(medidasRoutes);
-app.use(authRoutes);
+app.use('/api', userRoutes);
+app.use('/api', unidadAdministrativaRoutes);
+app.use('/api', proyectoRoutes);
+app.use('/api', rolesRoutes);
+app.use('/api', ejesRoutes);
+app.use('/api', departamentosRoutes);
+app.use('/api', presupuestosRoutes);
+app.use('/api', actividadesPlanificadasRoutes);
+app.use('/api', actividadesEjecutadasRoutes);
+app.use('/api', accionesRoutes);
+app.use('/api', medidasRoutes);
+app.use('/api', authRoutes);
 // Nuevas rutas del sistema de mejoras
-app.use(presupuestoAsignacionesRoutes);
-app.use(reportesRoutes);
+app.use('/api', presupuestoAsignacionesRoutes);
+app.use('/api', reportesRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -133,8 +132,8 @@ app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
 ║   🚀 Servidor corriendo en puerto: ${PORT}          ║
-║   📡 API: http://localhost:${PORT}/api            ║
-║   🏥 Health: http://localhost:${PORT}/health         ║
+║   📡 AI: http://localhost:${PORT}/api               ║
+║   🏥 Health: http://localhost:${PORT}/health        ║
 ╚═══════════════════════════════════════════════════╝
   `);
 });
@@ -142,12 +141,6 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM: Cerrando servidor...');
-  await pool.end();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT: Cerrando servidor...');
   await pool.end();
   process.exit(0);
 });

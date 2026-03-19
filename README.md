@@ -10,6 +10,9 @@ Sistema de gestión de proyectos institucionales con autenticación de usuarios,
 - **Gestión de Proyectos**: CRUD completo de proyectos institucionales
 - **API REST**: Backend construido con Node.js, Express y PostgreSQL
 - **Frontend Moderno**: React con Material-UI
+- **Avance Trimestral**: Seguimiento de avance por trimestre con registro de razones, obstáculos y documentación
+- **Gestión de Reportes**: Sistema completo de reportes por proyecto y unidad administrativa
+- **Presupuesto y Asignaciones**: Control de presupuesto y asignaciones por proyecto
 
 ## 📁 Estructura del Proyecto
 
@@ -68,6 +71,7 @@ npm install
 - Configurar la base de datos PostgreSQL (ver `database/db.sql`)
 - Crear archivo `.env` con las credenciales de la base de datos
 - Ejecutar seed data: `database/seed_data.sql`
+- Ejecutar migraciones si es necesario: `database/migration_v4.sql` (agrega campos: razon, obstaculos, documentacion_adjunta)
 
 ```bash
 npm run dev
@@ -112,6 +116,20 @@ O usa cualquier usuario de la base de datos con contraseña `admin` o `123456`.
 - `POST /proyectos` - Crear proyecto
 - `PUT /proyectos/:id` - Actualizar proyecto
 - `DELETE /proyectos/:id` - Eliminar proyecto
+
+### Reportes
+- `GET /reportes` - Obtener todos los reportes (con filtros)
+- `GET /reportes/proyecto/:proyecto_id` - Obtener reportes por proyecto
+- `GET /reportes/unidad/:unidad_id` - Obtener reportes por unidad administrativa
+- `GET /reportes/:id` - Obtener reporte por ID
+- `POST /reportes` - Crear reporte
+- `PUT /reportes/:id` - Actualizar reporte
+- `DELETE /reportes/:id` - Eliminar reporte
+
+### Actividades Ejecutadas
+- `GET /actividades-ejecutadas` - Obtener actividades ejecutadas
+- `POST /actividades-ejecutadas` - Crear actividad ejecutada (con campos: razon, obstaculos, documentacion_adjunta)
+- `PUT /actividades-ejecutadas/:id` - Actualizar actividad ejecutada
 
 ### Roles
 - `GET /roles` - Obtener todos los roles

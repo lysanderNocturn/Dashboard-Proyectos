@@ -1,17 +1,39 @@
 import { pool } from '../db.js';
 
 export const getPresupuestos = async (req, res) => {
-    const { rows } = await pool.query('SELECT * FROM presupuestos');
-    res.json(rows);
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    const countResult = await pool.query('SELECT COUNT(*) FROM presupuestos');
+    const total = parseInt(countResult.rows[0].count);
+
+    const { rows } = await pool.query(
+      'SELECT * FROM presupuestos ORDER BY ano DESC, created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+
+    res.json({
+      data: rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (error) {
+    console.error('Error getting presupuestos:', error);
+    res.status(500).json({ message: "Error al obtener presupuestos" });
+  }
 };
 
 export const getPresupuestoById = async (req, res) => {
-    const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM presupuestos WHERE id = $1', [id]);
-    if (rows.length === 0) {
-        return res.status(404).json({ message: "Presupuesto not found" });
-    }
-    res.json(rows[0]);
+  const { id } = req.params;
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({ message: "ID de presupuesto inválido" });
+  }
+  const { rows } = await pool.query('SELECT * FROM presupuestos WHERE id = $1', [parseInt(id)]);
+  if (rows.length === 0) {
+    return res.status(404).json({ message: "Presupuesto no encontrado" });
+  }
+  res.json(rows[0]);
 };
 
 export const createPresupuesto = async (req, res) => {

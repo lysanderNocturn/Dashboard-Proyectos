@@ -15,19 +15,31 @@ import Parametros from './pages/Parametros.jsx';
 import PresupuestosCRUD from './pages/PresupuestosCRUD.jsx';
 import './App.css';
 
-// Tema con color principal rojo vino/borgoña (#800020)
+// Cargar configuración de diseño desde localStorage
+const getDesignConfig = () => {
+  const saved = localStorage.getItem('designConfig');
+  return saved ? JSON.parse(saved) : {
+    primaryColor: '#800020',
+    secondaryColor: '#722F37',
+    logo: null,
+  };
+};
+
+const designConfig = getDesignConfig();
+
+// Tema con configuración dinámica
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#800020',
-      light: '#a3405c',
-      dark: '#5c0017',
+      main: designConfig.primaryColor,
+      light: designConfig.primaryColor === '#800020' ? '#a3405c' : `${designConfig.primaryColor}CC`,
+      dark: designConfig.primaryColor === '#800020' ? '#5c0017' : `${designConfig.primaryColor}88`,
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#722F37',
-      light: '#965058',
-      dark: '#4d1f25',
+      main: designConfig.secondaryColor,
+      light: designConfig.secondaryColor === '#722F37' ? '#965058' : `${designConfig.secondaryColor}CC`,
+      dark: designConfig.secondaryColor === '#722F37' ? '#4d1f25' : `${designConfig.secondaryColor}88`,
     },
     background: {
       default: '#faf8f9',

@@ -34,6 +34,7 @@ import {
   Business as UnidadIcon,
   Groups as DepartamentoIcon,
   Flag as EjeIcon,
+  Palette as DiseñoIcon,
 } from '@mui/icons-material';
 import { unidadService, departamentoService, ejeService } from '../services/parametrosService.js';
 
@@ -42,6 +43,14 @@ const Parametros = () => {
   const [unidades, setUnidades] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [ejes, setEjes] = useState([]);
+  const [designConfig, setDesignConfig] = useState(() => {
+    const saved = localStorage.getItem('designConfig');
+    return saved ? JSON.parse(saved) : {
+      primaryColor: '#800020',
+      secondaryColor: '#722F37',
+      logo: null,
+    };
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -251,9 +260,15 @@ const Parametros = () => {
               iconPosition="start"
               sx={{ gap: 1 }}
             />
-            <Tab 
-              icon={<EjeIcon />} 
-              label="Ejes" 
+            <Tab
+              icon={<EjeIcon />}
+              label="Ejes"
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab
+              icon={<DiseñoIcon />}
+              label="Diseño"
               iconPosition="start"
               sx={{ gap: 1 }}
             />
@@ -443,6 +458,157 @@ const Parametros = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+          )}
+
+          {tab === 3 && (
+            // Diseño
+            <Box sx={{ p: 4 }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 4 }}>
+                Configuración de Diseño del Sistema
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 600 }}>
+                {/* Color Primario */}
+                <Box>
+                  <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+                    Color Primario
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <input
+                      type="color"
+                      value={designConfig.primaryColor}
+                      onChange={(e) => setDesignConfig({ ...designConfig, primaryColor: e.target.value })}
+                      style={{ width: 60, height: 40, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    />
+                    <TextField
+                      value={designConfig.primaryColor}
+                      onChange={(e) => setDesignConfig({ ...designConfig, primaryColor: e.target.value })}
+                      placeholder="#800020"
+                      sx={{ flex: 1 }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Color Secundario */}
+                <Box>
+                  <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+                    Color Secundario
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <input
+                      type="color"
+                      value={designConfig.secondaryColor}
+                      onChange={(e) => setDesignConfig({ ...designConfig, secondaryColor: e.target.value })}
+                      style={{ width: 60, height: 40, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    />
+                    <TextField
+                      value={designConfig.secondaryColor}
+                      onChange={(e) => setDesignConfig({ ...designConfig, secondaryColor: e.target.value })}
+                      placeholder="#722F37"
+                      sx={{ flex: 1 }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Logotipo */}
+                <Box>
+                  <Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 2 }}>
+                    Logotipo Principal
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {designConfig.logo && (
+                      <Box
+                        component="img"
+                        src={designConfig.logo}
+                        sx={{ width: 60, height: 60, objectFit: 'contain', border: '1px solid #ddd', borderRadius: 1 }}
+                      />
+                    )}
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      sx={{ minWidth: 200 }}
+                    >
+                      {designConfig.logo ? 'Cambiar Logotipo' : 'Seleccionar Logotipo'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setDesignConfig({ ...designConfig, logo: event.target.result });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </Button>
+                    {designConfig.logo && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => setDesignConfig({ ...designConfig, logo: null })}
+                      >
+                        Eliminar
+                      </Button>
+                    )}
+                  </Box>
+                </Box>
+
+                {/* Vista Previa */}
+                <Box sx={{ mt: 4, p: 3, border: '1px solid #ddd', borderRadius: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                    Vista Previa
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: '100%',
+                      height: 100,
+                      borderRadius: 2,
+                      bgcolor: designConfig.primaryColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      position: 'relative',
+                    }}
+                  >
+                    {designConfig.logo && (
+                      <Box
+                        component="img"
+                        src={designConfig.logo}
+                        sx={{
+                          position: 'absolute',
+                          width: 40,
+                          height: 40,
+                          objectFit: 'contain',
+                          opacity: 0.8,
+                        }}
+                      />
+                    )}
+                    Color Primario con Logotipo
+                  </Box>
+                </Box>
+
+                {/* Botón Guardar */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => {
+                      localStorage.setItem('designConfig', JSON.stringify(designConfig));
+                      alert('Configuración guardada. Recarga la página para aplicar los cambios.');
+                    }}
+                    sx={{ minWidth: 200 }}
+                  >
+                    Guardar Configuración
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
           )}
         </Paper>
 

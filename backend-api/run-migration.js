@@ -13,7 +13,7 @@ const pool = new Pool({
   host: 'localhost',
   password: 'dirplan34',
   database: 'nodepg',
-  port: 5000
+  port: 5432
 });
 
 async function runMigration() {

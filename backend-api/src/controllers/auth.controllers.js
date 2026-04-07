@@ -1,13 +1,16 @@
 import { pool } from '../db.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config.js';
+
+const JWT_EXPIRES_IN = '24h';
 
 const generateToken = (user) => {
-  return Buffer.from(JSON.stringify({
-    userId: user.id,
-    username: user.username,
-    role_id: user.role_id,
-    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-  })).toString('base64');
+  return jwt.sign(
+    { userId: user.id, username: user.username, role_id: user.role_id },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
 };
 
 const sanitizeUser = (user) => ({

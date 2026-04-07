@@ -21,10 +21,26 @@ import reportesRoutes from './routes/reportes.routes.js';
 
 // Morgan for logging
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 const app = express();
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: 'Demasiadas solicitudes, intente más tarde' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Demasiados intentos de login, intente más tarde' }
+});
+
 // Middleware
+app.use(helmet());
+
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -42,6 +58,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging
 app.use(morgan('dev'));
+
+// Rate limiting
+app.use('/api', apiLimiter);
+app.use('/auth', authLimiter);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

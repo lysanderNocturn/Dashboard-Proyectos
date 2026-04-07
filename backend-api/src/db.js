@@ -6,5 +6,13 @@ export const pool = new pg.Pool({
     host: DB_HOST,
     password: DB_PASSWORD,
     database: DB_NAME,
-    port: DB_PORT
-})
+    port: DB_PORT,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+    process.exit(-1);
+});

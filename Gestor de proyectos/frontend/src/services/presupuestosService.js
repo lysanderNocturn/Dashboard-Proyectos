@@ -1,9 +1,9 @@
 import api from './api.js';
 
 export const presupuestoService = {
-  async getPresupuestos() {
-    const response = await api.get('/presupuestos');
-    return response.data;
+  async getPresupuestos(page = 1, limit = 50) {
+    const response = await api.get(`/presupuestos?page=${page}&limit=${limit}`);
+    return response.data.data || response.data || [];
   },
 
   async getPresupuestoById(id) {

@@ -3,6 +3,32 @@
 -- Insert in order to respect foreign key constraints
 -- ============================================
 
+-- Clear existing data in reverse dependency order
+DELETE FROM actividades_ejecutadas;
+DELETE FROM actividades_planeadas;
+DELETE FROM proyectos;
+DELETE FROM presupuestos;
+DELETE FROM departamentos;
+DELETE FROM unidad_administrativa;
+DELETE FROM ejes;
+DELETE FROM medidas;
+DELETE FROM acciones;
+DELETE FROM users;
+DELETE FROM roles;
+
+-- Reset sequences
+ALTER SEQUENCE roles_id_seq RESTART WITH 1;
+ALTER SEQUENCE users_id_seq RESTART WITH 1;
+ALTER SEQUENCE acciones_id_seq RESTART WITH 1;
+ALTER SEQUENCE medidas_id_seq RESTART WITH 1;
+ALTER SEQUENCE ejes_id_seq RESTART WITH 1;
+ALTER SEQUENCE unidad_administrativa_id_seq RESTART WITH 1;
+ALTER SEQUENCE departamentos_id_seq RESTART WITH 1;
+ALTER SEQUENCE presupuestos_id_seq RESTART WITH 1;
+ALTER SEQUENCE proyectos_id_seq RESTART WITH 1;
+ALTER SEQUENCE actividades_planeadas_id_seq RESTART WITH 1;
+ALTER SEQUENCE actividades_ejecutadas_id_seq RESTART WITH 1;
+
 -- 1. ROLES (no dependencies)
 INSERT INTO roles (name, description) VALUES
 ('Administrador', 'Acceso completo al sistema'),
@@ -86,12 +112,12 @@ INSERT INTO proyectos (nombre, descripcion, unidad_administrativa_id, departamen
 ('Rehabilitación Carretera Norte', 'Rehabilitación de 25 km de carretera', 3, 4, 1, 2, 'Proyecto priorizado por impacto regional', 2, 'En ejecución', 4, 4, 1),
 ('Centro de Capacitación Tecnológica', 'Construcción de centro de capacitación', 5, 7, 1, 1, 'Alto impacto en empleabilidad', 3, 'En planeación', 7, 7, 1),
 ('Programa de Becas Educativas', 'Becas para estudiantes de bajos recursos', 4, 6, 2, 2, 'Cobertura en 15 comunidades', 3, 'En ejecución', 6, 6, 2),
-('Adquisición de Equipo Médico', 'Equipamiento para clínicas rurales', 6, 8, 3, 3, 'Beneficiará 5 comunidades', 4, 'En licitación', 8, 8, 2),
-('Sistema de Gestión Documental', 'Digitalización de archivos', 1, 1, 4, 4, 'Mejora en eficiencia administrativa', 1, 'En desarrollo', 1, 1, 1),
-('Plataforma de Servicios Digitales', 'App para trámites en línea', 1, 1, 5, 5, 'Modernización administrativa', 1, 'En planeación', 9, 9, 1),
+('Adquisición de Equipo Médico', 'Equipamiento para clínicas rurales', 6, 8, 3, 1, 'Beneficiará 5 comunidades', 4, 'En licitación', 4, 8, 2),
+('Sistema de Gestión Documental', 'Digitalización de archivos', 1, 1, 4, 2, 'Mejora en eficiencia administrativa', 1, 'En desarrollo', 1, 1, 1),
+('Plataforma de Servicios Digitales', 'App para trámites en línea', 1, 1, 5, 1, 'Modernización administrativa', 1, 'En planeación', 1, 9, 1),
 ('Mantenimiento Edificios Gubernamentales', 'Mantenimiento preventivo anual', 3, 5, 6, 2, 'Programa establecido', 2, 'En ejecución', 5, 5, 2),
-('Estudio de Impacto Ambiental', 'Evaluación de proyectos prioritarios', 1, 1, 8, 3, 'Requerido por normativa', 5, 'Iniciado', 1, 1, 3),
-('Campaña de Prevención de Salud', 'Jornadas de salud preventiva', 6, 8, 9, 2, 'Cobertura municipal', 4, 'En ejecución', 8, 8, 3),
+('Estudio de Impacto Ambiental', 'Evaluación de proyectos prioritarios', 1, 1, 8, 1, 'Requerido por normativa', 5, 'Iniciado', 1, 1, 3),
+('Campaña de Prevención de Salud', 'Jornadas de salud preventiva', 6, 8, 9, 2, 'Cobertura municipal', 4, 'En ejecución', 4, 8, 3),
 ('Feria de Empleo Regional', 'Vinculación laboral', 4, 6, 10, 1, 'Proyecto trimestral', 1, 'Planificado', 6, 6, 2);
 
 -- 10. ACTIVIDADES_PLANEADAS (depends on proyectos, users)
@@ -120,7 +146,7 @@ INSERT INTO actividades_ejecutadas (actividad_planeada_id, trimestre, real_actua
 (9, 2, 5.00, 100, 'Entrega conforme', 'acta3.pdf', 9.0, 3),
 (10, 1, 11000.00, 110, 'Equipo de digitalización eficiente', 'reporte2.pdf', 9.5, 1);
 
-ALTER TABLE medidas ADD COLUMN name VARCHAR(255);
+ALTER TABLE medidas ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 UPDATE medidas SET name = description;
 -- ============================================
 -- END OF SEED DATA

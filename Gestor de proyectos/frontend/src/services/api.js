@@ -1,15 +1,13 @@
 import axios from 'axios';
 
-// Create axios instance with optimized settings
 const api = axios.create({
-  baseURL: 'http://localhost:4000',
-  timeout: 30000, // 30 second timeout
+  baseURL: 'http://localhost:4000/api',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-// Request interceptor - add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -18,9 +16,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor - handle errors globally

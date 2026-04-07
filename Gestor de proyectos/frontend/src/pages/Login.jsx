@@ -27,6 +27,11 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
+  const [logo, setLogo] = useState(() => {
+    const saved = localStorage.getItem('designConfig');
+    const config = saved ? JSON.parse(saved) : {};
+    return config.logo || null;
+  });
 
   const validateForm = () => {
     if (!username.trim()) {
@@ -87,6 +92,22 @@ const Login = () => {
           background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 50%)',
           animation: 'pulse 15s infinite',
         },
+        '&::after': logo ? {
+          content: '""',
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '300px',
+          height: '300px',
+          backgroundImage: `url(${logo})`,
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          opacity: 0.1,
+          pointerEvents: 'none',
+          zIndex: 0,
+        } : {},
       }}
     >
       <Paper
@@ -98,6 +119,7 @@ const Login = () => {
           borderRadius: 4,
           position: 'relative',
           overflow: 'hidden',
+          zIndex: 1,
           animation: 'fadeIn 0.6s ease-out',
           '&::before': {
             content: '""',
@@ -112,30 +134,51 @@ const Login = () => {
       >
         {/* Logo/Brand */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box
-            sx={{
-              width: 80,
-              height: 80,
-              borderRadius: 3,
-              bgcolor: 'primary.main',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
-              mb: 3,
-              fontSize: '1.75rem',
-              fontWeight: 'bold',
-              boxShadow: '0 8px 24px rgba(128, 0, 32, 0.35)',
-              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              '&:hover': {
-                transform: 'scale(1.05)',
-                boxShadow: '0 12px 32px rgba(128, 0, 32, 0.45)',
-              }
-            }}
-          >
-            GP
-          </Box>
+          {logo ? (
+            <Box
+              component="img"
+              src={logo}
+              sx={{
+                width: 80,
+                height: 80,
+                objectFit: 'contain',
+                mx: 'auto',
+                mb: 3,
+                borderRadius: 3,
+                boxShadow: '0 8px 24px rgba(128, 0, 32, 0.35)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 12px 32px rgba(128, 0, 32, 0.45)',
+                }
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: 3,
+                bgcolor: 'primary.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mx: 'auto',
+                mb: 3,
+                fontSize: '1.75rem',
+                fontWeight: 'bold',
+                boxShadow: '0 8px 24px rgba(128, 0, 32, 0.35)',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 12px 32px rgba(128, 0, 32, 0.45)',
+                }
+              }}
+            >
+              GP
+            </Box>
+          )}
           <Typography variant="h4" component="h1" fontWeight="bold" color="primary" sx={{ mb: 0.5 }}>
             Gestor de Proyectos
           </Typography>

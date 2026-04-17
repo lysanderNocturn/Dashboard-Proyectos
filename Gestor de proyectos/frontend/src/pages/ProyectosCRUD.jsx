@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { proyectosService } from '../services/proyectosService.js';
 import { ejeService, unidadService, departamentoService } from '../services/parametrosService.js';
 import { presupuestoService } from '../services/presupuestosService.js';
-import { asignacionesService } from '../services/asignacionesService.js';  // Importar servicio de asignaciones
+import { actividadesService } from '../services/actividadesService.js';
+
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   Box,
@@ -51,13 +52,15 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Close as CloseIcon,
+  Timeline as TimelineIcon,
 } from '@mui/icons-material';
+import * as XLSX from 'xlsx-js-style';
 
 const steps = [
-  'Unidad y Depto',  // Step 0: Auto-filled from user, then select department
-  'Información Básica',  // Step 1: Name, description
-  'Objetivo y Meta',  // Step 2: Objective, measurements
-  'Distribución Trimestral',  // Step 3: Trimestres
+  'Unidad y Departamento',  // Step 0: Auto-filled from user, then select department
+  'Información Básica',  // Step 1: Name, description, dates
+  'Actividades del Proyecto',  // Step 2: Define activities with measures, goals, evaluations
+  'Presupuesto y Distribución',  // Step 3: Assign budget and distribute to activities
   'Resumen'  // Step 4: Summary before creating
 ];
 
@@ -81,19 +84,14 @@ const ProyectosCRUD = () => {
     estado_actual: 'Activo',
     evaluacion: '',
     objetivo: '',
-    meta_total: 100,
-    duracion_anos: 1,
-    medida_tipo: 'porcentaje',
     fecha_inicio: '',
     fecha_fin: '',
     ejes_id: '',
     presupuesto_id: '',
-    monto_asignar: '',  // Nuevo campo para especificar monto a asignar
+    presupuesto_total: '',  // Total budget assigned to project
     unidad_administrativa_id: '',
     departamento_id: '',
-    accion_id: '',
-    medida_id: '',
-    trimestres: [],
+    actividades: [],  // Array of activities with their details
   });
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -107,24 +105,7 @@ const ProyectosCRUD = () => {
     );
   }, [presupuestos, formData.departamento_id]);
 
-  // Generate trimestres - iniciar con objetivos en 0 para que el usuario los defina
-  const generateTrimestres = (duracionAnos, metaTotal, medidaTipo) => {
-    const trimestres = [];
-    // Los objetivosinician en 0 para que el usuario los defina manualmente
-    // y pueda ir aumentando el porcentaje u objetivo que quiera alcanzar
-    
-    for (let ano = 1; ano <= duracionAnos; ano++) {
-      for (let trimestre = 1; trimestre <= 4; trimestre++) {
-        trimestres.push({
-          ano,
-          trimestre,
-          meta: 0, // Objetivo inicia en 0
-          porcentaje: 0, // Porcentaje inicia en 0
-        });
-      }
-    }
-    return trimestres;
-  };
+
 
   const loadProyectos = async () => {
     try {
@@ -154,59 +135,71 @@ const ProyectosCRUD = () => {
     loadProyectos();
   }, []);
 
-  const handleOpenDialog = (proyecto = null, view = false) => {
+    const handleOpenDialog = (proyecto = null, view = false) => {
     setViewMode(view);
     setActiveStep(0);
     setError(null);
     
     if (proyecto) {
       setEditingProyecto(proyecto);
-      const duracion = proyecto.duracion_anos || 1;
-      const meta = proyecto.meta_total || 100;
-      const medida = proyecto.medida_tipo || 'porcentaje';
-      const existingTrimestres = proyecto.trimestres || [];
-      
+      // For existing projects, try to load actividades or create default if not present
+      const existingActividades = proyecto.actividades || [];
+      const defaultActividades = existingActividades.length > 0 ? existingActividades : [
+        {
+          id: 1,
+          nombre: '',
+          descripcion: '',
+          medida_tipo: 'porcentaje',
+          meta_total: proyecto.meta_total || 100,
+          evaluacion: proyecto.evaluacion || '',
+          presupuesto_asignado: 0
+        }
+      ];
+
       setFormData({
         nombre: proyecto.nombre || '',
         descripcion: proyecto.descripcion || '',
         estado_actual: proyecto.estado_actual || 'Activo',
         evaluacion: proyecto.evaluacion || '',
         objetivo: proyecto.objetivo || '',
-        meta_total: meta,
-        duracion_anos: duracion,
-        medida_tipo: medida,
         fecha_inicio: proyecto.fecha_inicio ? proyecto.fecha_inicio.split('T')[0] : '',
         fecha_fin: proyecto.fecha_fin ? proyecto.fecha_fin.split('T')[0] : '',
         ejes_id: proyecto.ejes_id || '',
         presupuesto_id: proyecto.presupuesto_id || '',
+        presupuesto_total: proyecto.presupuesto_total || '',
         unidad_administrativa_id: proyecto.unidad_administrativa_id || '',
         departamento_id: proyecto.departamento_id || '',
-        accion_id: proyecto.accion_id || '',
-        medida_id: proyecto.medida_id || '',
-        trimestres: existingTrimestres.length > 0 ? existingTrimestres : generateTrimestres(duracion, meta, medida),
+        actividades: defaultActividades,
       });
     } else {
       setEditingProyecto(null);
       // Auto-select the user's unidad administrativa if available
       const userUnidadId = user?.unidad_administrativa_id || '';
+      const defaultActividades = [
+        {
+          id: 1,
+          nombre: '',
+          descripcion: '',
+          medida_tipo: 'porcentaje',
+          meta_total: 100,
+          evaluacion: '',
+          presupuesto_asignado: 0
+        }
+      ];
       setFormData({
         nombre: '',
         descripcion: '',
         estado_actual: 'Activo',
         evaluacion: '',
         objetivo: '',
-        meta_total: 100,
-        duracion_anos: 1,
-        medida_tipo: 'porcentaje',
         fecha_inicio: '',
         fecha_fin: '',
         ejes_id: '',
         presupuesto_id: '',
+        presupuesto_total: '',
         unidad_administrativa_id: userUnidadId,
         departamento_id: '',
-        accion_id: '',
-        medida_id: '',
-        trimestres: generateTrimestres(1, 100, 'porcentaje'),
+        actividades: defaultActividades,
       });
     }
 
@@ -236,26 +229,74 @@ const ProyectosCRUD = () => {
     setError(null);
     switch (step) {
       case 0:
-        // Validar unidad administrativa (obligatoria) y departamento
+        // Validar unidad administrativa y departamento
         if (!formData.unidad_administrativa_id) {
           setError('La unidad administrativa es obligatoria');
           return false;
         }
+        if (!formData.departamento_id) {
+          setError('El departamento es obligatorio');
+          return false;
+        }
         return true;
       case 1:
-        // Validar nombre del proyecto
+        // Validar información básica
         if (!formData.nombre.trim()) {
           setError('El nombre del proyecto es obligatorio');
           return false;
         }
-        return true;
-      case 2:
-        // Validar objetivo
-        if (!formData.objetivo.trim()) {
-          setError('El objetivo del proyecto es obligatorio');
+        if (!formData.descripcion.trim()) {
+          setError('La descripción del proyecto es obligatoria');
+          return false;
+        }
+        if (!formData.fecha_inicio) {
+          setError('La fecha de inicio es obligatoria');
+          return false;
+        }
+        if (!formData.fecha_fin) {
+          setError('La fecha de fin es obligatoria');
           return false;
         }
         return true;
+      case 2: {
+        // Validar actividades
+        if (formData.actividades.length === 0) {
+          setError('Debe definir al menos una actividad');
+          return false;
+        }
+        for (const actividad of formData.actividades) {
+          if (!actividad.nombre.trim()) {
+            setError('Todas las actividades deben tener nombre');
+            return false;
+          }
+          if (!actividad.descripcion.trim()) {
+            setError('Todas las actividades deben tener descripción');
+            return false;
+          }
+          if (!actividad.evaluacion.trim()) {
+            setError('Todas las actividades deben tener evaluación');
+            return false;
+          }
+        }
+        return true;
+      }
+      case 3: {
+        // Validar presupuesto
+        if (!formData.presupuesto_id) {
+          setError('Debe seleccionar un presupuesto');
+          return false;
+        }
+        if (!formData.presupuesto_total || formData.presupuesto_total <= 0) {
+          setError('Debe asignar un monto al proyecto');
+          return false;
+        }
+        const totalDistribuido = formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0);
+        if (totalDistribuido !== parseFloat(formData.presupuesto_total)) {
+          setError('El presupuesto distribuido debe ser igual al total asignado');
+          return false;
+        }
+        return true;
+      }
       default:
         return true;
     }
@@ -265,22 +306,55 @@ const ProyectosCRUD = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
+      // Calculate derived fields for compatibility
+      const totalMeta = formData.actividades.reduce((sum, a) => sum + (a.meta_total || 0), 0);
+      const medidaTipo = formData.actividades[0]?.medida_tipo || 'porcentaje';
+
       const dataToSend = {
         ...formData,
-        trimestres: formData.trimestres
+        meta_total: totalMeta,
+        medida_tipo: medidaTipo,
+        actividades: formData.actividades
       };
-      
+
       console.log('Enviando datos:', dataToSend);
-      
+
+      const isNew = !editingProyecto;
+
       if (editingProyecto) {
         await proyectosService.updateProyecto(editingProyecto.id, dataToSend);
       } else {
         await proyectosService.createProyecto(dataToSend);
       }
-      
+
       handleCloseDialog();
       await loadProyectos();
+
+      // Generate Excel for new projects
+      if (isNew) {
+        const wb = XLSX.utils.book_new();
+        const data = [
+          ['Proyecto', formData.nombre],
+          ['Descripción', formData.descripcion],
+          ['Estado', formData.estado_actual],
+          ['Evaluación', formData.evaluacion],
+          ['Objetivo', formData.objetivo],
+          ['Fecha Inicio', formData.fecha_inicio],
+          ['Fecha Fin', formData.fecha_fin],
+          ['Eje', ejes.find(e => e.id === formData.ejes_id)?.nombre || ''],
+          ['Presupuesto Total', formData.presupuesto_total],
+          ['Unidad Administrativa', unidades.find(u => u.id === formData.unidad_administrativa_id)?.nombre || ''],
+          ['Departamento', departamentos.find(d => d.id === formData.departamento_id)?.nombre || ''],
+          [], // empty row
+          ['Actividades'],
+          ['Nombre', 'Descripción', 'Meta Total', 'Tipo de Medida', 'Evaluación', 'Presupuesto Asignado'],
+          ...formData.actividades.map(a => [a.nombre, a.descripcion, a.meta_total, a.medida_tipo, a.evaluacion, a.presupuesto_asignado])
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Proyecto y Actividades');
+        XLSX.writeFile(wb, `${formData.nombre}_registro.xlsx`);
+      }
     } catch (err) {
       console.error('Error al guardar:', err);
       setError('Error al guardar el proyecto: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
@@ -308,23 +382,56 @@ const ProyectosCRUD = () => {
     }
   };
 
-  const handleTrimestreChange = (index, field, value) => {
-    const newTrimestres = [...formData.trimestres];
-    newTrimestres[index][field] = parseFloat(value) || 0;
-    
-    if (field === 'meta') {
-      const totalMeta = newTrimestres.reduce((sum, t) => sum + t.meta, 0);
-      newTrimestres.forEach(t => {
-        t.porcentaje = totalMeta > 0 ? Math.round((t.meta / totalMeta) * 100 * 100) / 100 : 0;
-      });
-    }
-    
-    setFormData({ ...formData, trimestres: newTrimestres });
+
+
+  // Activity management functions
+  const addActividad = () => {
+    const newId = Math.max(...formData.actividades.map(a => a.id), 0) + 1;
+    const newActividad = {
+      id: newId,
+      nombre: '',
+      descripcion: '',
+      medida_tipo: 'porcentaje',
+      meta_total: 100,
+      evaluacion: '',
+      presupuesto_asignado: 0
+    };
+    setFormData({
+      ...formData,
+      actividades: [...formData.actividades, newActividad]
+    });
   };
 
-  const handleDuracionChange = (newDuracion) => {
-    const newTrimestres = generateTrimestres(newDuracion, formData.meta_total, formData.medida_tipo);
-    setFormData({ ...formData, duracion_anos: newDuracion, trimestres: newTrimestres });
+  const removeActividad = (id) => {
+    setFormData({
+      ...formData,
+      actividades: formData.actividades.filter(a => a.id !== id)
+    });
+  };
+
+  const updateActividad = (id, field, value) => {
+    setFormData({
+      ...formData,
+      actividades: formData.actividades.map(a =>
+        a.id === id ? { ...a, [field]: value } : a
+      )
+    });
+  };
+
+  const distributePresupuesto = (totalPresupuesto) => {
+    const totalMetas = formData.actividades.reduce((sum, a) => sum + (a.meta_total || 0), 0);
+    if (totalMetas === 0) return;
+
+    const updatedActividades = formData.actividades.map(a => ({
+      ...a,
+      presupuesto_asignado: Math.round((a.meta_total / totalMetas) * totalPresupuesto)
+    }));
+
+    setFormData({
+      ...formData,
+      presupuesto_total: totalPresupuesto,
+      actividades: updatedActividades
+    });
   };
 
   const getEstadoColor = (estado) => {
@@ -368,11 +475,20 @@ const ProyectosCRUD = () => {
                 <Select
                   value={formData.unidad_administrativa_id}
                   label="Unidad Administrativa *"
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
+                  onChange={(e) => setFormData({
+                    ...formData,
                     unidad_administrativa_id: e.target.value,
-                    departamento_id: '' 
+                    departamento_id: ''
                   })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
                   <MenuItem value=""><em>Seleccionar unidad...</em></MenuItem>
                   {unidades.map((unidad) => (
@@ -388,6 +504,15 @@ const ProyectosCRUD = () => {
                   value={formData.departamento_id}
                   label="Departamento *"
                   onChange={(e) => setFormData({ ...formData, departamento_id: e.target.value })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
                   <MenuItem value=""><em>Seleccionar departamento...</em></MenuItem>
                   {departamentos
@@ -411,9 +536,17 @@ const ProyectosCRUD = () => {
           </Grid>
         );
       case 1:
-        // Step 2: Información Básica (Nombre, Descripción, Fechas)
+        // Step 1: Información Básica (Nombre, Descripción, Fechas, Eje)
         return (
           <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom color="primary">
+                Información General del Proyecto
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Complete la información básica del proyecto
+              </Typography>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 autoFocus
@@ -433,7 +566,7 @@ const ProyectosCRUD = () => {
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label="Descripción"
+                label="Descripción *"
                 fullWidth
                 multiline
                 rows={3}
@@ -442,60 +575,20 @@ const ProyectosCRUD = () => {
                 disabled={viewMode}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={viewMode}>
-                <InputLabel>Eje del Proyecto</InputLabel>
-                <Select
-                  value={formData.ejes_id}
-                  label="Eje del Proyecto"
-                  onChange={(e) => setFormData({ ...formData, ejes_id: e.target.value })}
-                >
-                  <MenuItem value=""><em>Seleccionar eje...</em></MenuItem>
-                  {ejes.map((eje) => (
-                    <MenuItem key={eje.id} value={eje.id}>{eje.nombre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <Grid item xs={12}>
+              <TextField
+                label="Objetivo del Proyecto"
+                fullWidth
+                multiline
+                rows={2}
+                value={formData.objetivo}
+                onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
+                disabled={viewMode}
+              />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={viewMode}>
-                <InputLabel>Presupuesto</InputLabel>
-                <Select
-                  value={formData.presupuesto_id}
-                  label="Presupuesto"
-                  onChange={(e) => setFormData({ ...formData, presupuesto_id: e.target.value, monto_asignar: '' })}
-                >
-                  <MenuItem value=""><em>Seleccionar presupuesto...</em></MenuItem>
-                  {presupuestosFiltrados.map((pres) => {
-                    const montoDisponible = (pres.monto || 0) - (pres.monto_asignado || 0);
-                    return (
-                      <MenuItem key={pres.id} value={pres.id}>
-                        ${(pres.monto || 0).toLocaleString('es-MX')} ({pres.ano}) - Disponible: ${montoDisponible.toLocaleString('es-MX')}
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            </Grid>
-            {formData.presupuesto_id && (
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Monto a Asignar"
-                  type="number"
-                  fullWidth
-                  value={formData.monto_asignar}
-                  onChange={(e) => setFormData({ ...formData, monto_asignar: e.target.value })}
-                  disabled={viewMode}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                  helperText={`Monto disponible: ${((presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto || 0) - (presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto_asignado || 0)).toLocaleString('es-MX')}`}
-                />
-              </Grid>
-            )}
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Fecha de Inicio"
+                label="Fecha de Inicio *"
                 type="date"
                 fullWidth
                 value={formData.fecha_inicio}
@@ -506,7 +599,7 @@ const ProyectosCRUD = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Fecha de Fin"
+                label="Fecha de Fin *"
                 type="date"
                 fullWidth
                 value={formData.fecha_fin}
@@ -517,11 +610,44 @@ const ProyectosCRUD = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth disabled={viewMode}>
+                <InputLabel>Eje del Proyecto</InputLabel>
+                <Select
+                  value={formData.ejes_id}
+                  label="Eje del Proyecto"
+                  onChange={(e) => setFormData({ ...formData, ejes_id: e.target.value })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
+                >
+                  <MenuItem value=""><em>Seleccionar eje...</em></MenuItem>
+                  {ejes.map((eje) => (
+                    <MenuItem key={eje.id} value={eje.id}>{eje.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={viewMode}>
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={formData.estado_actual}
                   label="Estado"
                   onChange={(e) => setFormData({ ...formData, estado_actual: e.target.value })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
                   <MenuItem value="Activo">Activo</MenuItem>
                   <MenuItem value="En Progreso">En Progreso</MenuItem>
@@ -531,212 +657,372 @@ const ProyectosCRUD = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={viewMode || !!editingProyecto}>
-                <InputLabel>Duración (Años) *</InputLabel>
-                <Select
-                  value={formData.duracion_anos}
-                  label="Duración (Años) *"
-                  onChange={(e) => handleDuracionChange(parseInt(e.target.value))}
-                >
-                  <MenuItem value={1}>1 Año (4 trimestres)</MenuItem>
-                  <MenuItem value={2}>2 Años (8 trimestres)</MenuItem>
-                  <MenuItem value={3}>3 Años (12 trimestres)</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
           </Grid>
         );
       
       case 2:
-        // Step 2: Información Básica (Objetivo, Descripción, Fechas)
+        // Step 2: Actividades del Proyecto
         return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                autoFocus
-                label="Objetivo del Proyecto *"
-                fullWidth
-                value={formData.objetivo}
-                onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
-                disabled={viewMode}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <FlagIcon color="primary" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              </Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Descripción"
-                fullWidth
-                multiline
-                rows={3}
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                disabled={viewMode}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth disabled={viewMode}>
-                <InputLabel>Tipo de Medida</InputLabel>
-                <Select
-                  value={formData.medida_tipo}
-                  label="Tipo de Medida"
-                  onChange={(e) => setFormData({ ...formData, medida_tipo: e.target.value })}
-                >
-                  <MenuItem value="porcentaje">Porcentaje (%)</MenuItem>
-                  <MenuItem value="cantidad">Cantidad Numérica</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label={`Meta Total ${formData.medida_tipo === 'porcentaje' ? '(%)' : ''}`}
-                type="number"
-                fullWidth
-                value={formData.meta_total}
-                onChange={(e) => {
-                  const newMeta = parseFloat(e.target.value) || 0;
-                  setFormData({ 
-                    ...formData, 
-                    meta_total: newMeta,
-                    trimestres: generateTrimestres(formData.duracion_anos, newMeta, formData.medida_tipo)
-                  });
-                }}
-                disabled={viewMode}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      {formData.medida_tipo === 'porcentaje' ? '%' : 'uds'}
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Card 
-                variant="outlined" 
-                sx={{ 
-                  borderRadius: 4, 
-                  bgcolor: 'background.default', 
-                  transition: 'all 0.3s ease', 
-                  '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' } 
+          <Box>
+            <Typography variant="h6" gutterBottom color="primary">
+              Actividades del Proyecto
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Defina las actividades que se realizarán para cumplir con el proyecto. Cada actividad debe tener medidas, metas y evaluaciones.
+            </Typography>
+
+            {formData.actividades.map((actividad, index) => (
+              <Card
+                key={actividad.id}
+                variant="outlined"
+                sx={{
+                  mb: 3,
+                  borderRadius: 3,
+                  transition: 'all 0.3s ease',
+                  '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.1)' }
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="subtitle2" gutterBottom color="primary">
-                    <PieChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Resumen
-                  </Typography>
-                  <Typography variant="body2">
-                    Meta Total: <strong>{formData.meta_total} {formData.medida_tipo === 'porcentaje' ? '%' : 'unidades'}</strong>
-                  </Typography>
-                  <Typography variant="body2">
-                    Duración: <strong>{formData.duracion_anos} año(s)</strong> = {formData.duracion_anos * 4} trimestres
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" color="primary">
+                      Actividad {index + 1}
+                    </Typography>
+                    {formData.actividades.length > 1 && (
+                      <IconButton
+                        color="error"
+                        onClick={() => removeActividad(actividad.id)}
+                        disabled={viewMode}
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
+                  </Box>
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Nombre de la Actividad *"
+                        fullWidth
+                        value={actividad.nombre}
+                        onChange={(e) => updateActividad(actividad.id, 'nombre', e.target.value)}
+                        disabled={viewMode}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Descripción *"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={actividad.descripcion}
+                        onChange={(e) => updateActividad(actividad.id, 'descripcion', e.target.value)}
+                        disabled={viewMode}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth disabled={viewMode}>
+                        <InputLabel>Tipo de Medida</InputLabel>
+                        <Select
+                          value={actividad.medida_tipo}
+                          label="Tipo de Medida"
+                          onChange={(e) => updateActividad(actividad.id, 'medida_tipo', e.target.value)}
+                          size="medium"
+                          sx={{
+                            minHeight: 56,
+                            '& .MuiSelect-select': {
+                              paddingTop: '14px',
+                              paddingBottom: '14px',
+                              fontSize: '1rem',
+                            }
+                          }}
+                        >
+                          <MenuItem value="porcentaje">Porcentaje (%)</MenuItem>
+                          <MenuItem value="cantidad">Cantidad Numérica</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label={`Meta Total ${actividad.medida_tipo === 'porcentaje' ? '(%)' : ''}`}
+                        type="number"
+                        fullWidth
+                        value={actividad.meta_total}
+                        onChange={(e) => updateActividad(actividad.id, 'meta_total', parseFloat(e.target.value) || 0)}
+                        disabled={viewMode}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              {actividad.medida_tipo === 'porcentaje' ? '%' : 'uds'}
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Presupuesto Asignado"
+                        type="number"
+                        fullWidth
+                        value={actividad.presupuesto_asignado}
+                        onChange={(e) => updateActividad(actividad.id, 'presupuesto_asignado', parseFloat(e.target.value) || 0)}
+                        disabled={viewMode}
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Evaluación *"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={actividad.evaluacion}
+                        onChange={(e) => updateActividad(actividad.id, 'evaluacion', e.target.value)}
+                        disabled={viewMode}
+                        helperText="Describa cómo se evaluará el cumplimiento de esta actividad"
+                      />
+                    </Grid>
+                  </Grid>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            ))}
+
+            <Box sx={{ textAlign: 'center', mt: 3 }}>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={addActividad}
+                disabled={viewMode}
+                sx={{ minWidth: 200 }}
+              >
+                Agregar Actividad
+              </Button>
+            </Box>
+
+            <Card
+              variant="outlined"
+              sx={{
+                mt: 3,
+                borderRadius: 3,
+                bgcolor: 'grey.50',
+                borderColor: 'primary.light'
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                  <PieChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Resumen de Actividades
+                </Typography>
+                <Typography variant="body2">
+                  Total de actividades: <strong>{formData.actividades.length}</strong>
+                </Typography>
+                <Typography variant="body2">
+                  Meta total del proyecto: <strong>{formData.actividades.reduce((sum, a) => sum + (a.meta_total || 0), 0)} unidades</strong>
+                </Typography>
+                <Typography variant="body2">
+                  Presupuesto total distribuido: <strong>${formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0).toLocaleString('es-MX')}</strong>
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
         );
       
       case 3:
+        // Step 3: Presupuesto y Distribución
         return (
           <Box>
-            <Typography variant="h6" gutterBottom>
-              <TimeIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Distribución por Trimestres
+            <Typography variant="h6" gutterBottom color="primary">
+              Presupuesto del Proyecto
             </Typography>
-            
-            {[...Array(formData.duracion_anos)].map((_, yearIndex) => {
-              const yearNum = yearIndex + 1;
-              const yearTrimestres = formData.trimestres.filter(t => t.ano === yearNum);
-              
-              return (
-                <Card 
-                  key={yearNum} 
-                  variant="outlined" 
-                  sx={{ 
-                    mb: 2, 
-                    borderRadius: 4, 
-                    bgcolor: 'background.default', 
-                    transition: 'all 0.3s ease', 
-                    '&:hover': { boxShadow: '0 8px 30px rgba(0,0,0,0.12)' } 
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Seleccione un presupuesto disponible y distribuya el monto entre las actividades definidas.
+            </Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth disabled={viewMode}>
+                  <InputLabel>Presupuesto Disponible *</InputLabel>
+                  <Select
+                    value={formData.presupuesto_id}
+                    label="Presupuesto Disponible *"
+                    onChange={(e) => setFormData({ ...formData, presupuesto_id: e.target.value, presupuesto_total: '' })}
+                    size="medium"
+                    sx={{
+                      minHeight: 56,
+                      '& .MuiSelect-select': {
+                        paddingTop: '14px',
+                        paddingBottom: '14px',
+                        fontSize: '1rem',
+                      }
+                    }}
+                  >
+                    <MenuItem value=""><em>Seleccionar presupuesto...</em></MenuItem>
+                    {presupuestosFiltrados.map((pres) => {
+                      const montoDisponible = (pres.monto || 0) - (pres.monto_asignado || 0);
+                      return (
+                        <MenuItem
+                          key={pres.id}
+                          value={pres.id}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            padding: '12px 16px',
+                            minHeight: '60px',
+                            whiteSpace: 'normal',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <Typography
+                            variant="body1"
+                            fontWeight="medium"
+                            sx={{
+                              fontSize: '1rem',
+                              color: montoDisponible > 0 ? 'success.main' : 'text.primary',
+                            }}
+                          >
+                            ${montoDisponible.toLocaleString('es-MX')} disponible
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              fontSize: '0.875rem',
+                              marginTop: '2px',
+                            }}
+                          >
+                            Año: {pres.ano}
+                          </Typography>
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Monto Total a Asignar al Proyecto *"
+                  type="number"
+                  fullWidth
+                  value={formData.presupuesto_total}
+                  onChange={(e) => {
+                    const newTotal = parseFloat(e.target.value) || 0;
+                    distributePresupuesto(newTotal);
+                  }}
+                  disabled={viewMode || !formData.presupuesto_id}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                  helperText={formData.presupuesto_id ?
+                    `Disponible: ${((presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto || 0) - (presupuestosFiltrados.find(p => p.id === formData.presupuesto_id)?.monto_asignado || 0)).toLocaleString('es-MX')}` :
+                    'Seleccione un presupuesto primero'
+                  }
+                />
+              </Grid>
+            </Grid>
+
+            {formData.presupuesto_total > 0 && (
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" gutterBottom color="primary">
+                  Distribución del Presupuesto por Actividades
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  El presupuesto se distribuye automáticamente basado en las metas de cada actividad.
+                </Typography>
+
+                {formData.actividades.map((actividad, index) => (
+                  <Card
+                    key={actividad.id}
+                    variant="outlined"
+                    sx={{
+                      mb: 2,
+                      borderRadius: 3,
+                      transition: 'all 0.3s ease',
+                      '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.1)' }
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={4}>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {actividad.nombre || `Actividad ${index + 1}`}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Meta: {actividad.meta_total} {actividad.medida_tipo === 'porcentaje' ? '%' : 'unidades'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <TextField
+                            label="Presupuesto Asignado"
+                            type="number"
+                            fullWidth
+                            value={actividad.presupuesto_asignado}
+                            onChange={(e) => updateActividad(actividad.id, 'presupuesto_asignado', parseFloat(e.target.value) || 0)}
+                            disabled={viewMode}
+                            InputProps={{
+                              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <Typography variant="body2" color="text.secondary">
+                            Porcentaje del total:
+                          </Typography>
+                          <Chip
+                            label={`${formData.presupuesto_total > 0 ? Math.round((actividad.presupuesto_asignado / formData.presupuesto_total) * 100) : 0}%`}
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                <Card
+                  variant="outlined"
+                  sx={{
+                    mt: 3,
+                    borderRadius: 3,
+                    bgcolor: 'grey.50',
+                    borderColor: 'success.light'
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="subtitle1" color="primary" fontWeight="bold" gutterBottom>
-                      Año {yearNum}
+                  <CardContent sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" color="success.main" gutterBottom>
+                      <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      Resumen de Distribución
                     </Typography>
-                    <Grid container spacing={2}>
-                      {yearTrimestres.map((trimestre, idx) => {
-                        const globalIndex = formData.trimestres.findIndex(
-                          t => t.ano === yearNum && t.trimestre === trimestre.trimestre
-                        );
-                        
-                        return (
-                          <Grid item xs={6} sm={3} key={`${yearNum}-${trimestre.trimestre}`}>
-                            <Card 
-                              variant="outlined" 
-                              sx={{ 
-                                borderRadius: 3,
-                                transition: 'all 0.2s ease',
-                                '&:hover': { 
-                                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                                  transform: 'scale(1.02)'
-                                } 
-                              }}
-                            >
-                              <CardContent sx={{ p: 2 }}>
-                                <Typography variant="subtitle2" color="primary">
-                                  T{trimestre.trimestre}
-                                </Typography>
-                                <TextField
-                                  label="Meta"
-                                  type="number"
-                                  size="small"
-                                  fullWidth
-                                  value={trimestre.meta}
-                                  onChange={(e) => handleTrimestreChange(globalIndex, 'meta', e.target.value)}
-                                  disabled={viewMode}
-                                  sx={{ mb: 1 }}
-                                />
-                                <Chip 
-                                  label={`${trimestre.porcentaje}%`}
-                                  size="small"
-                                  color="info"
-                                  variant="outlined"
-                                />
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
+                    <Typography variant="body2">
+                      Presupuesto total asignado: <strong>${parseFloat(formData.presupuesto_total || 0).toLocaleString('es-MX')}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Total distribuido: <strong>${formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0).toLocaleString('es-MX')}</strong>
+                    </Typography>
+                    <Typography variant="body2" color={formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0) === parseFloat(formData.presupuesto_total || 0) ? 'success.main' : 'error.main'}>
+                      Estado: {formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0) === parseFloat(formData.presupuesto_total || 0) ? 'Distribución correcta' : 'Ajuste necesario'}
+                    </Typography>
                   </CardContent>
                 </Card>
-              );
-            })}
+              </Box>
+            )}
           </Box>
         );
       
       case 4:
-        // Step 5: Resumen del Proyecto
+        // Step 4: Resumen del Proyecto
         return (
           <Box>
             <Typography variant="h6" gutterBottom color="primary">
               Resumen del Proyecto
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Revise la información antes de crear el proyecto
+              Revise toda la información antes de crear el proyecto
             </Typography>
-            
+
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
@@ -747,10 +1033,11 @@ const ProyectosCRUD = () => {
                     <Typography variant="body2"><strong>Nombre:</strong> {formData.nombre || 'Sin nombre'}</Typography>
                     <Typography variant="body2"><strong>Descripción:</strong> {formData.descripcion || 'Sin descripción'}</Typography>
                     <Typography variant="body2"><strong>Objetivo:</strong> {formData.objetivo || 'Sin objetivo'}</Typography>
+                    <Typography variant="body2"><strong>Fechas:</strong> {formData.fecha_inicio ? formatDate(formData.fecha_inicio) : 'No definida'} - {formData.fecha_fin ? formatDate(formData.fecha_fin) : 'No definida'}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>
@@ -763,42 +1050,13 @@ const ProyectosCRUD = () => {
                     <Typography variant="body2">
                       <strong>Departamento:</strong> {departamentos.find(d => d.id === formData.departamento_id)?.nombre || 'No seleccionado'}
                     </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      Metas y Duración
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Meta:</strong> {formData.meta_total} {formData.medida_tipo === 'porcentaje' ? '%' : 'unidades'}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Duración:</strong> {formData.duracion_anos} año(s)
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      Eje y Evaluación
-                    </Typography>
                     <Typography variant="body2">
                       <strong>Eje:</strong> {ejes.find(e => e.id === formData.ejes_id)?.nombre || 'No seleccionado'}
                     </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      <strong>Evaluación:</strong> {formData.evaluacion || 'Sin evaluación'}
-                    </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>
@@ -806,11 +1064,42 @@ const ProyectosCRUD = () => {
                       Presupuesto
                     </Typography>
                     <Typography variant="body2">
-                      <strong>Presupuesto:</strong> {
-                        presupuestos.find(p => p.id === formData.presupuesto_id)
-                          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(presupuestos.find(p => p.id === formData.presupuesto_id)?.monto)
-                          : 'No asignado'
-                      }
+                      <strong>Fuente:</strong> {presupuestos.find(p => p.id === formData.presupuesto_id)?.ano || 'No seleccionado'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Monto asignado:</strong> ${parseFloat(formData.presupuesto_total || 0).toLocaleString('es-MX')}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Actividades ({formData.actividades.length})
+                    </Typography>
+                    {formData.actividades.map((actividad, index) => (
+                      <Box key={actividad.id} sx={{ mb: 2, pb: 2, borderBottom: index < formData.actividades.length - 1 ? '1px solid #e0e0e0' : 'none' }}>
+                        <Typography variant="subtitle2" color="primary">
+                          {index + 1}. {actividad.nombre}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 2 }}>
+                          <strong>Descripción:</strong> {actividad.descripcion}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 2 }}>
+                          <strong>Meta:</strong> {actividad.meta_total} {actividad.medida_tipo === 'porcentaje' ? '%' : 'unidades'}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 2 }}>
+                          <strong>Presupuesto:</strong> ${actividad.presupuesto_asignado?.toLocaleString('es-MX') || 0}
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 2 }}>
+                          <strong>Evaluación:</strong> {actividad.evaluacion}
+                        </Typography>
+                      </Box>
+                    ))}
+                    <Typography variant="body2" sx={{ mt: 2, fontWeight: 'bold' }}>
+                      Total presupuesto distribuido: ${formData.actividades.reduce((sum, a) => sum + (a.presupuesto_asignado || 0), 0).toLocaleString('es-MX')}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -891,85 +1180,106 @@ const ProyectosCRUD = () => {
         ) : (
           <TableContainer>
             <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell><strong>Proyecto</strong></TableCell>
-                  <TableCell><strong>Objetivo</strong></TableCell>
-                  <TableCell><strong>Meta</strong></TableCell>
-                  <TableCell><strong>Presupuesto</strong></TableCell>
-                  <TableCell><strong>Duración</strong></TableCell>
-                  <TableCell><strong>Estado</strong></TableCell>
-                  <TableCell><strong>Progreso</strong></TableCell>
-                  <TableCell align="center"><strong>Acciones</strong></TableCell>
-                </TableRow>
-              </TableHead>
+               <TableHead>
+                 <TableRow sx={{ bgcolor: 'grey.50' }}>
+                   <TableCell><strong>Proyecto</strong></TableCell>
+                   <TableCell><strong>Actividades</strong></TableCell>
+                   <TableCell><strong>Meta Total</strong></TableCell>
+                   <TableCell><strong>Presupuesto</strong></TableCell>
+                   <TableCell><strong>Estado</strong></TableCell>
+                   <TableCell><strong>Progreso</strong></TableCell>
+                   <TableCell align="center"><strong>Acciones</strong></TableCell>
+                 </TableRow>
+               </TableHead>
               <TableBody>
                 {proyectos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                      <Typography color="text.secondary">No hay proyectos registrados</Typography>
-                      <Button variant="contained" sx={{ mt: 2 }} onClick={() => handleOpenDialog()}>
-                        Crear Proyecto
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                   <TableRow>
+                     <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                       <Typography color="text.secondary">No hay proyectos registrados</Typography>
+                       <Button variant="contained" sx={{ mt: 2 }} onClick={() => handleOpenDialog()}>
+                         Crear Proyecto
+                       </Button>
+                     </TableCell>
+                   </TableRow>
                 ) : (
-                  proyectos.map((proyecto) => {
-                    const meses = Array.isArray(proyecto.trimestres) ? proyecto.trimestres : [];
-                    const progreso = Number(meses.reduce((sum, t) => sum + (Number(t.porcentaje) || 0), 0)) || 0;
-                    
-                    return (
-                      <TableRow key={proyecto.id} hover>
-                        <TableCell>
-                          <Typography fontWeight="medium">{proyecto.nombre}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDate(proyecto.fecha_inicio)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={`${proyecto.meta_total || 0} ${proyecto.medida_tipo === 'porcentaje' ? '%' : ''}`}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {proyecto.presupuesto_id ? (
-                            <Chip 
-                              label={new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(proyecto.presupuesto_monto)}
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                            />
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">Sin asignar</Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>{proyecto.duracion_anos || 1} año(s)</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={proyecto.estado_actual || 'Sin estado'}
-                            color={getEstadoColor(proyecto.estado_actual)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{ width: 60, bgcolor: 'grey.200', borderRadius: 1, height: 8, overflow: 'hidden' }}>
-                              <Box sx={{ 
-                                width: `${Math.min(progreso, 100)}%`,
-                                bgcolor: progreso >= 100 ? 'success.main' : 'primary.main',
-                                height: '100%'
-                              }} />
-                            </Box>
-                            <Typography variant="caption">{progreso.toFixed(0)}%</Typography>
-                          </Box>
-                        </TableCell>
+                   proyectos.map((proyecto) => {
+                      // Calculate progress based on activities if available, otherwise use old method
+                      let progreso = 0;
+                      if (proyecto.actividades && proyecto.actividades.length > 0) {
+                        // For now, assume 0 progress since we don't have actual progress tracking yet
+                        progreso = 0;
+                      } else {
+                       const meses = Array.isArray(proyecto.trimestres) ? proyecto.trimestres : [];
+                       progreso = Number(meses.reduce((sum, t) => sum + (Number(t.porcentaje) || 0), 0)) || 0;
+                     }
+
+                     const actividades = proyecto.actividades || [];
+                     const totalMeta = actividades.length > 0
+                       ? actividades.reduce((sum, a) => sum + (a.meta_total || 0), 0)
+                       : proyecto.meta_total || 0;
+                     const medidaTipo = actividades.length > 0
+                       ? actividades[0]?.medida_tipo || 'porcentaje'
+                       : proyecto.medida_tipo || 'porcentaje';
+
+                     return (
+                       <TableRow key={proyecto.id} hover>
+                         <TableCell>
+                           <Typography fontWeight="medium">{proyecto.nombre}</Typography>
+                           <Typography variant="caption" color="text.secondary">
+                             {formatDate(proyecto.fecha_inicio)}
+                           </Typography>
+                         </TableCell>
+                         <TableCell>
+                           <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                             {actividades.length > 0 ? `${actividades.length} actividades` : proyecto.objetivo || ''}
+                           </Typography>
+                         </TableCell>
+                         <TableCell>
+                           <Chip
+                             label={`${totalMeta} ${medidaTipo === 'porcentaje' ? '%' : ''}`}
+                             size="small"
+                             color="primary"
+                             variant="outlined"
+                           />
+                         </TableCell>
+                         <TableCell>
+                           {proyecto.presupuesto_total ? (
+                             <Chip
+                               label={new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(proyecto.presupuesto_total)}
+                               size="small"
+                               color="success"
+                               variant="outlined"
+                             />
+                           ) : proyecto.presupuesto_id ? (
+                             <Chip
+                               label={new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(proyecto.presupuesto_monto)}
+                               size="small"
+                               color="success"
+                               variant="outlined"
+                             />
+                           ) : (
+                             <Typography variant="caption" color="text.secondary">Sin asignar</Typography>
+                           )}
+                         </TableCell>
+                         <TableCell>
+                           <Chip
+                             label={proyecto.estado_actual || 'Sin estado'}
+                             color={getEstadoColor(proyecto.estado_actual)}
+                             size="small"
+                           />
+                         </TableCell>
+                         <TableCell>
+                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                             <Box sx={{ width: 60, bgcolor: 'grey.200', borderRadius: 1, height: 8, overflow: 'hidden' }}>
+                               <Box sx={{
+                                 width: `${Math.min(progreso, 100)}%`,
+                                 bgcolor: progreso >= 100 ? 'success.main' : 'primary.main',
+                                 height: '100%'
+                               }} />
+                             </Box>
+                             <Typography variant="caption">{progreso.toFixed(0)}%</Typography>
+                           </Box>
+                         </TableCell>
                         <TableCell align="center">
                           <Tooltip title="Ver">
                             <IconButton color="info" onClick={() => handleOpenDialog(proyecto, true)} size="small">
@@ -979,6 +1289,15 @@ const ProyectosCRUD = () => {
                           <Tooltip title="Editar">
                             <IconButton color="primary" onClick={() => handleOpenDialog(proyecto)} size="small">
                               <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Avance Trimestral">
+                            <IconButton
+                              color="secondary"
+                              onClick={() => window.open(`/avance?proyecto=${proyecto.id}`, '_blank')}
+                              size="small"
+                            >
+                              <TimelineIcon />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Eliminar">
@@ -1065,10 +1384,7 @@ const ProyectosCRUD = () => {
                         : 'Sin presupuesto'}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">Duración</Typography>
-                    <Typography variant="body1">{formData.duracion_anos} año(s)</Typography>
-                  </Grid>
+
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle2" color="text.secondary">Meta Total</Typography>
                     <Typography variant="body1">{formData.meta_total} {formData.medida_tipo === 'porcentaje' ? '%' : 'unidades'}</Typography>
@@ -1109,33 +1425,42 @@ const ProyectosCRUD = () => {
                 </Grid>
               </Paper>
 
-              {/* Metas Trimestrales */}
+              {/* Actividades del Proyecto */}
               <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
                 <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
-                  Metas Trimestrales
+                  Actividades del Proyecto
                 </Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: 'grey.100' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Año</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Trimestre</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Meta</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Porcentaje</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {formData.trimestres?.map((trimestre, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{trimestre.ano}</TableCell>
-                          <TableCell>T{trimestre.trimestre}</TableCell>
-                          <TableCell>{trimestre.meta}</TableCell>
-                          <TableCell>{trimestre.porcentaje}%</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                {formData.actividades?.length > 0 ? (
+                  formData.actividades.map((actividad, index) => (
+                    <Card key={actividad.id} variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                          {index + 1}. {actividad.nombre}
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} md={6}>
+                            <Typography variant="body2" color="text.secondary">Descripción</Typography>
+                            <Typography variant="body1">{actividad.descripcion}</Typography>
+                          </Grid>
+                          <Grid item xs={12} md={3}>
+                            <Typography variant="body2" color="text.secondary">Meta</Typography>
+                            <Typography variant="body1">{actividad.meta_total} {actividad.medida_tipo === 'porcentaje' ? '%' : 'unidades'}</Typography>
+                          </Grid>
+                          <Grid item xs={12} md={3}>
+                            <Typography variant="body2" color="text.secondary">Presupuesto</Typography>
+                            <Typography variant="body1">${actividad.presupuesto_asignado?.toLocaleString('es-MX') || 0}</Typography>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">Evaluación</Typography>
+                            <Typography variant="body1">{actividad.evaluacion}</Typography>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No hay actividades definidas</Typography>
+                )}
               </Paper>
             </Box>
           ) : (

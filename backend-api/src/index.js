@@ -21,22 +21,31 @@ import reportesRoutes from './routes/reportes.routes.js';
 
 // Morgan for logging
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import winston from 'winston';
+
+// Winston logger configuration
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'gestor-proyectos-api' },
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple(),
+  }));
+}
 
 const app = express();
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { message: 'Demasiadas solicitudes, intente más tarde' }
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: 'Demasiados intentos de login, intente más tarde' }
-});
 
 // Middleware
 app.use(helmet());
@@ -57,11 +66,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging
-app.use(morgan('dev'));
-
-// Rate limiting
-app.use('/api', apiLimiter);
-app.use('/auth', authLimiter);
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}));
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -105,6 +114,35 @@ app.get('/api', (req, res) => {
       // Add more as needed
     }
   });
+});
+
+// Metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    const dbStart = Date.now();
+    await pool.query('SELECT COUNT(*) as proyectos FROM proyectos');
+    const dbResponse = Date.now() - dbStart;
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: {
+        used: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+        total: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+        external: `${Math.round(process.memoryUsage().external / 1024 / 1024)}MB`
+      },
+      database: {
+        responseTime: `${dbResponse}ms`,
+        status: 'connected'
+      },
+      version: '1.0.0'
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'database_error',
+      error: error.message
+    });
+  }
 });
 
 // API Routes

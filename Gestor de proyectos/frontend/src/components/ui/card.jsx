@@ -1,22 +1,5 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-
-/**
- * Card Component with multiple variants and enhanced UI/UX
- * 
- * Variants:  
- * - default: Standard card with subtle shadow
- * - elevated: Enhanced shadow for depth
- * - interactive: Clickable card with hover effects
- * - outlined: Card with border only
- * - gradient: Card with gradient background
- * 
- * Features:
- * - Animation support
- * - Status indicators
- * - Icon slots
- * - Loading states
- */
 const Card = React.forwardRef(({ 
   className, 
   variant = "default",
@@ -72,7 +55,8 @@ const Card = React.forwardRef(({
         status && statusColors[status],
         interactive && variant === "default" && "hover:shadow-lg hover:border-primary/30 cursor-pointer transition-all duration-300 hover:-translate-y-1",
         onClick && "cursor-pointer",
-        className
+        className,
+        hoverEffect && "hover:shadow-lg transition-shadow duration-300"
       )}
       onClick={onClick}
       role={onClick ? "button" : undefined}

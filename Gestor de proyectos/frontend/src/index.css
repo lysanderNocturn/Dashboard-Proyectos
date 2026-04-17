@@ -289,6 +289,57 @@ body {
   border-color: #800020;
 }
 
+/* Select improvements */
+.MuiSelect-select {
+  line-height: 1.5 !important;
+  min-height: 1.5em !important;
+}
+
+.MuiFormControl-root .MuiInputLabel-root {
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+}
+
+.MuiMenuItem-root {
+  font-size: 1rem !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  min-height: 48px !important;
+}
+
+/* Combobox improvements for better text readability */
+.MuiMenuItem-root .MuiTypography-root {
+  line-height: 1.4 !important;
+}
+
+.MuiMenuItem-root {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Enhanced select dropdown for combobox behavior */
+.MuiPopover-root .MuiPaper-root .MuiList-root {
+  max-height: 300px !important;
+}
+
+/* Better spacing for multi-line select items */
+.MuiMenuItem-root[data-multiline="true"] {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  min-height: 64px !important;
+}
+
+/* Enhanced select dropdown */
+.MuiPopover-root .MuiPaper-root {
+  border-radius: 8px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.MuiMenuItem-root:hover {
+  background-color: rgba(128, 0, 32, 0.08) !important;
+}
+
 /* Chip styles */
 .MuiChip-root {
   font-weight: 500 !important;
@@ -297,6 +348,50 @@ body {
 /* Dialog styles */
 .MuiDialog-paper {
   border-radius: 16px !important;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+/* Modal animations */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom modal classes */
+.modal-fade-in {
+  animation: modalFadeIn 0.4s ease-out;
+}
+
+.modal-slide-in {
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+/* Enhanced modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Modal content entrance animations */
+.modal-content-enter {
+  animation: modalSlideIn 0.5s ease-out 0.1s both;
 }
 
 /* Alert styles */

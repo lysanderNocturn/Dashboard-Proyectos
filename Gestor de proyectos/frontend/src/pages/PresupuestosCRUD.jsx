@@ -201,7 +201,7 @@ const PresupuestosCRUD = () => {
             p: 4, 
             mb: 3, 
             mt: 3,
-            background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
+            background: 'linear-gradient(135deg, #86113B 0%, #E49E59 100%)',
             color: 'white',
             borderRadius: 4,
             position: 'relative',
@@ -320,17 +320,17 @@ const PresupuestosCRUD = () => {
           fullWidth
           PaperProps={{ sx: { borderRadius: 3 } }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: 'primary.main', 
-            color: 'white', 
-            py: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Typography variant="h6" fontWeight="medium">
-              {editingItem ? 'Editar' : 'Nuevo'} Presupuesto
-            </Typography>
+           <DialogTitle sx={{
+             bgcolor: 'primary.main',
+             color: 'white',
+             py: 2,
+             display: 'flex',
+             justifyContent: 'space-between',
+             alignItems: 'center'
+           }}>
+             <Typography component="span" variant="h6" fontWeight="medium">
+               {editingItem ? 'Editar' : 'Nuevo'} Presupuesto
+             </Typography>
             <IconButton onClick={handleCloseDialog} sx={{ color: 'white' }}>
               <CloseIcon />
             </IconButton>
@@ -384,11 +384,20 @@ const PresupuestosCRUD = () => {
                 <Select
                   value={formData.unidad_administrativa_id || ''}
                   label="Unidad Administrativa"
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
+                  onChange={(e) => setFormData({
+                    ...formData,
                     unidad_administrativa_id: e.target.value,
                     departamento_id: '' // Reset department when unit changes
                   })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
                   <MenuItem value="">
                     <em>Seleccione una opción</em>
@@ -412,6 +421,15 @@ const PresupuestosCRUD = () => {
                   value={formData.departamento_id || ''}
                   label="Departamento"
                   onChange={(e) => setFormData({ ...formData, departamento_id: e.target.value })}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
                   <MenuItem value="">
                     <em>Seleccione una opción</em>

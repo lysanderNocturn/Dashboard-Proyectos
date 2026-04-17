@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { authService } from '../services/authService.js';
 import { usuariosService } from '../services/usuariosService.js';
+import { unidadService } from '../services/parametrosService.js';
 import api from '../services/api.js';
 import {
   Box,
@@ -51,6 +53,10 @@ const UsuariosCRUD = () => {
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [usuarioToDelete, setUsuarioToDelete] = useState(null);
+  const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState([]);
+  const [selectedUnidades, setSelectedUnidades] = useState([]);
+  const [bulkCreating, setBulkCreating] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -103,6 +109,17 @@ const UsuariosCRUD = () => {
       });
     }
     setOpenDialog(true);
+  };
+
+  const handleOpenBulkCreate = async () => {
+    try {
+      const unidades = await unidadService.getUnidades();
+      setUnidadesAdministrativas(unidades || []);
+      setSelectedUnidades([]);
+      setBulkCreateOpen(true);
+    } catch (err) {
+      setError('Error al cargar unidades administrativas: ' + (err.message || 'Error desconocido'));
+    }
   };
 
   const handleCloseDialog = () => {
@@ -193,6 +210,64 @@ const UsuariosCRUD = () => {
     return 'default';
   };
 
+  const handleBulkCreateUsers = async () => {
+    if (selectedUnidades.length === 0) {
+      setError('Seleccione al menos una unidad administrativa');
+      return;
+    }
+
+    setBulkCreating(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const unidadId of selectedUnidades) {
+        const unidad = unidadesAdministrativas.find(u => u.id === unidadId);
+        if (!unidad) continue;
+
+        // Generate username and email based on unit name
+        const baseUsername = unidad.nombre.toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, '')
+          .substring(0, 15);
+
+        const username = `${baseUsername}_user`;
+        const email = `${baseUsername}@institucion.edu.mx`;
+
+        // Find a default role (preferably not admin)
+        const defaultRole = roles.find(r => !r.name?.toLowerCase().includes('admin')) || roles[0];
+
+        try {
+          await authService.createUser({
+            username: username,
+            email: email,
+            password_hash: 'TempPass123!', // Default password
+            role_id: defaultRole?.id || null,
+          });
+          successCount++;
+        } catch (err) {
+          console.error(`Error creando usuario para ${unidad.nombre}:`, err);
+          errorCount++;
+        }
+      }
+
+      setBulkCreateOpen(false);
+      loadUsuarios();
+
+      if (successCount > 0) {
+        toast.success(`Se crearon ${successCount} usuarios exitosamente`);
+      }
+      if (errorCount > 0) {
+        setError(`No se pudieron crear ${errorCount} usuarios. Verifique la consola para más detalles.`);
+      }
+
+    } catch (err) {
+      setError('Error en la creación masiva: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setBulkCreating(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -237,39 +312,54 @@ const UsuariosCRUD = () => {
               Administre los usuarios del sistema
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={loadUsuarios}
-              disabled={isLoading}
-              sx={{ 
-                borderColor: 'rgba(255,255,255,0.5)', 
-                color: 'white',
-                backdropFilter: 'blur(10px)',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.15)' },
-                borderRadius: 2,
-                px: 3
-              }}
-            >
-              Actualizar
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              sx={{ 
-                bgcolor: 'white', 
-                color: 'primary.main',
-                fontWeight: 'bold',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                borderRadius: 2,
-                px: 3
-              }}
-            >
-              Nuevo Usuario
-            </Button>
-          </Box>
+           <Box sx={{ display: 'flex', gap: 2 }}>
+             <Button
+               variant="outlined"
+               startIcon={<RefreshIcon />}
+               onClick={loadUsuarios}
+               disabled={isLoading}
+               sx={{
+                 borderColor: 'rgba(255,255,255,0.5)',
+                 color: 'white',
+                 backdropFilter: 'blur(10px)',
+                 '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.15)' },
+                 borderRadius: 2,
+                 px: 3
+               }}
+             >
+               Actualizar
+             </Button>
+             <Button
+               variant="outlined"
+               startIcon={<PersonIcon />}
+               onClick={handleOpenBulkCreate}
+               sx={{
+                 borderColor: 'rgba(255,255,255,0.5)',
+                 color: 'white',
+                 backdropFilter: 'blur(10px)',
+                 '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.15)' },
+                 borderRadius: 2,
+                 px: 3
+               }}
+             >
+               Crear por Unidades
+             </Button>
+             <Button
+               variant="contained"
+               startIcon={<AddIcon />}
+               onClick={() => handleOpenDialog()}
+               sx={{
+                 bgcolor: 'white',
+                 color: 'primary.main',
+                 fontWeight: 'bold',
+                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                 borderRadius: 2,
+                 px: 3
+               }}
+             >
+               Nuevo Usuario
+             </Button>
+           </Box>
         </Box>
       </Paper>
 
@@ -454,6 +544,113 @@ const UsuariosCRUD = () => {
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained">Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Create Users Dialog */}
+      <Dialog open={bulkCreateOpen} onClose={() => setBulkCreateOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          Crear Usuarios por Unidad Administrativa
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Seleccione las unidades administrativas para las cuales desea crear usuarios. Se generarán automáticamente:
+          </Typography>
+          <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+              Formato de creación:
+            </Typography>
+            <Typography variant="body2" component="div">
+              • <strong>Usuario:</strong> nombre_unidad_user
+              <br />
+              • <strong>Email:</strong> nombre_unidad@institucion.edu.mx
+              <br />
+              • <strong>Contraseña:</strong> TempPass123! (se recomienda cambiar al primer inicio de sesión)
+              <br />
+              • <strong>Rol:</strong> El primer rol disponible que no sea administrador
+            </Typography>
+          </Box>
+
+          {unidadesAdministrativas.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">
+                No hay unidades administrativas disponibles
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Unidades Administrativas Disponibles:
+              </Typography>
+              <Grid container spacing={2}>
+                {unidadesAdministrativas.map((unidad) => {
+                  const isSelected = selectedUnidades.includes(unidad.id);
+                  const baseUsername = unidad.nombre.toLowerCase()
+                    .replace(/\s+/g, '_')
+                    .replace(/[^a-z0-9_]/g, '')
+                    .substring(0, 15);
+                  const username = `${baseUsername}_user`;
+
+                  return (
+                    <Grid item xs={12} sm={6} key={unidad.id}>
+                      <Paper
+                        elevation={1}
+                        sx={{
+                          p: 2,
+                          border: isSelected ? '2px solid #800020' : '1px solid #ddd',
+                          bgcolor: isSelected ? 'rgba(128, 0, 32, 0.04)' : 'background.paper',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            borderColor: '#800020',
+                            bgcolor: 'rgba(128, 0, 32, 0.08)',
+                          }
+                        }}
+                        onClick={() => {
+                          setSelectedUnidades(prev =>
+                            isSelected
+                              ? prev.filter(id => id !== unidad.id)
+                              : [...prev, unidad.id]
+                          );
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // Handled by parent onClick
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {unidad.nombre}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {unidad.descripcion}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', bgcolor: 'grey.100', px: 1, py: 0.5, borderRadius: 1 }}>
+                          Usuario: {username}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setBulkCreateOpen(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleBulkCreateUsers}
+            variant="contained"
+            disabled={bulkCreating || selectedUnidades.length === 0}
+            sx={{ bgcolor: '#800020' }}
+          >
+            {bulkCreating ? 'Creando...' : `Crear ${selectedUnidades.length} Usuario(s)`}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

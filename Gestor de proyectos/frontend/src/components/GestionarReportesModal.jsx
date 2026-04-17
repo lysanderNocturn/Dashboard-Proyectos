@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { reportesService } from "@/services/reportesService";
 
 export default function GestionarReportesModal({
@@ -29,9 +30,9 @@ export default function GestionarReportesModal({
         if (proyectoId && isOpen && !isCreating) {
             loadReportes();
         }
-    }, [proyectoId, isOpen, isCreating]);
+    }, [proyectoId, isOpen, isCreating, loadReportes]);
 
-    const loadReportes = async () => {
+    const loadReportes = useCallback(async () => {
         try {
             setLoading(true);
             const data = await reportesService.getReportesByProyecto(proyectoId);
@@ -43,7 +44,7 @@ export default function GestionarReportesModal({
         } finally {
             setLoading(false);
         }
-    };
+    }, [proyectoId]);
 
     const handleReporteClick = (reporte) => {
         onReporteSeleccionado(reporte);
@@ -93,8 +94,8 @@ export default function GestionarReportesModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto modal-fade-in">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Gestionar Reportes</CardTitle>
                     <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
@@ -121,50 +122,63 @@ export default function GestionarReportesModal({
                                 />
                             </div>
                             
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Tipo de Reporte</label>
-                                <select
-                                    name="tipo_reporte"
-                                    value={formData.tipo_reporte}
-                                    onChange={handleInputChange}
-                                    className="w-full p-2 border rounded"
-                                >
-                                    <option value="trimestral">Trimestral</option>
-                                    <option value="anual">Anual</option>
-                                </select>
-                            </div>
+                             <div>
+                                 <label className="block text-sm font-medium mb-1">Tipo de Reporte</label>
+                                 <Select
+                                     value={formData.tipo_reporte}
+                                     onValueChange={(value) => setFormData(prev => ({ ...prev, tipo_reporte: value }))}
+                                 >
+                                     <SelectTrigger className="w-full">
+                                         <SelectValue placeholder="Seleccionar tipo" />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                         <SelectItem value="trimestral" className="py-3 px-4 text-base">
+                                           Trimestral
+                                         </SelectItem>
+                                         <SelectItem value="anual" className="py-3 px-4 text-base">
+                                           Anual
+                                         </SelectItem>
+                                     </SelectContent>
+                                 </Select>
+                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Año</label>
-                                    <select
-                                        name="ano"
-                                        value={formData.ano}
-                                        onChange={handleInputChange}
-                                        className="w-full p-2 border rounded"
-                                    >
-                                        <option value={1}>Año 1</option>
-                                        <option value={2}>Año 2</option>
-                                        <option value={3}>Año 3</option>
-                                    </select>
-                                </div>
+                                 <div>
+                                     <label className="block text-sm font-medium mb-1">Año</label>
+                                     <Select
+                                         value={formData.ano.toString()}
+                                         onValueChange={(value) => setFormData(prev => ({ ...prev, ano: parseInt(value) }))}
+                                     >
+                                         <SelectTrigger className="w-full">
+                                             <SelectValue placeholder="Seleccionar año" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                             <SelectItem value="1" className="py-3 px-4 text-base">Año 1</SelectItem>
+                                             <SelectItem value="2" className="py-3 px-4 text-base">Año 2</SelectItem>
+                                             <SelectItem value="3" className="py-3 px-4 text-base">Año 3</SelectItem>
+                                         </SelectContent>
+                                     </Select>
+                                 </div>
                                 
-                                {formData.tipo_reporte === 'trimestral' && (
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Trimestre</label>
-                                        <select
-                                            name="trimestre"
-                                            value={formData.trimestre}
-                                            onChange={handleInputChange}
-                                            className="w-full p-2 border rounded"
-                                        >
-                                            <option value={1}>Q1 (Enero-Marzo)</option>
-                                            <option value={2}>Q2 (Abril-Junio)</option>
-                                            <option value={3}>Q3 (Julio-Septiembre)</option>
-                                            <option value={4}>Q4 (Octubre-Diciembre)</option>
-                                        </select>
-                                    </div>
-                                )}
+                                 {formData.tipo_reporte === 'trimestral' && (
+                                     <div>
+                                         <label className="block text-sm font-medium mb-1">Trimestre</label>
+                                         <Select
+                                             value={formData.trimestre.toString()}
+                                             onValueChange={(value) => setFormData(prev => ({ ...prev, trimestre: parseInt(value) }))}
+                                         >
+                                             <SelectTrigger className="w-full">
+                                                 <SelectValue placeholder="Seleccionar trimestre" />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                 <SelectItem value="1" className="py-3 px-4 text-base">Q1 (Enero-Marzo)</SelectItem>
+                                                 <SelectItem value="2" className="py-3 px-4 text-base">Q2 (Abril-Junio)</SelectItem>
+                                                 <SelectItem value="3" className="py-3 px-4 text-base">Q3 (Julio-Septiembre)</SelectItem>
+                                                 <SelectItem value="4" className="py-3 px-4 text-base">Q4 (Octubre-Diciembre)</SelectItem>
+                                             </SelectContent>
+                                         </Select>
+                                     </div>
+                                 )}
                             </div>
                             
                             <div>

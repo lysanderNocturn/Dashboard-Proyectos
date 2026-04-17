@@ -2,12 +2,22 @@ import { pool } from '../db.js';
 
 export const getActividadesEjecutadas = async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT ae.*, ap.descripcion as actividad_planificada 
-       FROM actividades_ejecutadas ae
-       LEFT JOIN actividades_planeadas ap ON ae.actividad_planeada_id = ap.id
-       ORDER BY ae.created_at DESC`
-    );
+    const { proyecto_id } = req.query;
+    let query = `SELECT ae.id, ae.actividad_planeada_id, ae.trimestre, ae.real_actualizado,
+                        ae.porcentaje_cumplimiento, ae.evidencia, ae.calificacion, ae.updated_by,
+                        ae.updated_at, ap.descripcion as nombre, ae.observaciones as descripcion
+                 FROM actividades_ejecutadas ae
+                 LEFT JOIN actividades_planeadas ap ON ae.actividad_planeada_id = ap.id`;
+    let params = [];
+
+    if (proyecto_id) {
+      query += ` WHERE ap.proyecto_id = $1`;
+      params.push(parseInt(proyecto_id));
+    }
+
+    query += ` ORDER BY ae.updated_at DESC`;
+
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
     console.error('Error getting actividades ejecutadas:', error);
@@ -30,13 +40,9 @@ export const getActividadEjecutadaById = async (req, res) => {
 export const createActividadEjecutada = async (req, res) => {
   try {
     const { actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta } = req.body;
-    
-    if (!actividad_planeada_id) {
-      return res.status(400).json({ message: "ID de actividad planificada es requerido" });
-    }
-    
+
     const { rows } = await pool.query(
-      `INSERT INTO actividades_ejecutadas (actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta) 
+      `INSERT INTO actividades_ejecutadas (actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [actividad_planeada_id, trimestre, real_actualizado, porcentaje_cumplimiento, observaciones, evidencia, calificacion, updated_by, razon, obstaculos, documentacion_adjunta]
     );

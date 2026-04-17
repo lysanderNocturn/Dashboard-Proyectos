@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { asignacionesService } from '@/services/asignacionesService';
 
 export default function AsignarPresupuestoModal({ 
@@ -22,16 +23,16 @@ export default function AsignarPresupuestoModal({
     if (presupuesto?.id && isOpen) {
       loadAsignaciones();
     }
-  }, [presupuesto?.id, isOpen]);
+  }, [presupuesto?.id, isOpen, loadAsignaciones]);
 
-  const loadAsignaciones = async () => {
+  const loadAsignaciones = useCallback(async () => {
     try {
       const data = await asignacionesService.getAsignacionesByPresupuesto(presupuesto.id);
       setProyectosAsignados(data.asignaciones || []);
     } catch (err) {
       console.error('Error al cargar asignaciones:', err);
     }
-  };
+  }, [presupuesto?.id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,9 +89,9 @@ export default function AsignarPresupuestoModal({
     p => !proyectosAsignados.some(pa => pa.proyecto_id === p.id)
   );
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    return (
+    <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-fade-in">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Asignar Presupuesto a Proyectos</CardTitle>
           <Button variant="ghost" onClick={onClose}>✕</Button>
@@ -154,22 +155,30 @@ export default function AsignarPresupuestoModal({
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Proyecto</label>
-                <select
-                  value={selectedProyecto}
-                  onChange={(e) => setSelectedProyecto(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                  required
-                >
-                  <option value="">Seleccionar proyecto...</option>
-                  {proyectosDisponibles.map((proyecto) => (
-                    <option key={proyecto.id} value={proyecto.id}>
-                      {proyecto.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
+               <div>
+                 <label className="block text-sm font-medium mb-1">Proyecto</label>
+                 <Select
+                   value={selectedProyecto}
+                   onValueChange={setSelectedProyecto}
+                 >
+                   <SelectTrigger className="w-full">
+                     <SelectValue placeholder="Seleccionar proyecto..." />
+                   </SelectTrigger>
+                   <SelectContent>
+                      {proyectosDisponibles.map((proyecto) => (
+                        <SelectItem
+                          key={proyecto.id}
+                          value={proyecto.id.toString()}
+                          className="py-3 px-4 text-base"
+                        >
+                          <span className="block truncate max-w-full">
+                            {proyecto.nombre}
+                          </span>
+                        </SelectItem>
+                      ))}
+                   </SelectContent>
+                 </Select>
+               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">

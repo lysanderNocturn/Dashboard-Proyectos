@@ -1,871 +1,961 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { proyectosService } from '../services/proyectosService.js';
+import { actividadesService } from '../services/actividadesService.js';
+import { Editor } from 'react-draft-wysiwyg';
+import { EditorState, convertToRaw, ContentState } from 'draft-js';
+import draftToHtml from 'draftjs-to-html';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import {
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Close as CloseIcon,
+  TrendingUp as TrendingUpIcon,
+  Add as AddIcon,
+  GridOn as GridOnIcon,
+} from '@mui/icons-material';
 import {
   Box,
-  Typography,
+  CircularProgress,
+  Alert,
   Paper,
-  Grid,
-  Card,
-  CardContent,
-  Select,
-  MenuItem,
+  Typography,
   FormControl,
   InputLabel,
-  TextField,
+  Select,
+  MenuItem,
   Button,
-  Table,
-  TableBody,
-  TableCell,
+  Grid,
+  Chip,
+  TextField,
   TableContainer,
+  Table,
   TableHead,
   TableRow,
-  Chip,
-  Alert,
-  CircularProgress,
+  TableCell,
+  TableBody,
+  Tooltip,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
-  LinearProgress,
-  Fade,
+  Divider,
 } from '@mui/material';
-import {
-  Save as SaveIcon,
-  Close as CloseIcon,
-  PhotoCamera as PhotoIcon,
-  Edit as EditIcon,
-  Visibility as ViewIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Assessment as ReportIcon,
-} from '@mui/icons-material';
-import { proyectosService } from '../services/proyectosService.js';
-import { actividadesService } from '../services/actividadesService.js';
-import { reportesService } from '../services/reportesService.js';
-import GestionarReportesModal from '../components/GestionarReportesModal.jsx';
 
-const AvanceTrimestral = () => {
-  const [proyectos, setProyectos] = useState([]);
-  const [actividadesPlanificadas, setActividadesPlanificadas] = useState([]);
-  const [actividadesEjecutadas, setActividadesEjecutadas] = useState([]);
-  const [reportes, setReportes] = useState([]);  
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedProyecto, setSelectedProyecto] = useState('');
-  const [selectedAno, setSelectedAno] = useState(1);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingActividad, setEditingActividad] = useState(null);
-  const [trimestreActual, setTrimestreActual] = useState(1);
-  const [openReportesModal, setOpenReportesModal] = useState(false);
+export default function AvanceTrimestral() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const mountedRef = useRef(true);
 
-  // Estado del formulario
-  const [formData, setFormData] = useState({
-    trimestre: 1,
-    real_actualizado: 0,
-    porcentaje_cumplimiento: 0,
-    observaciones: '',
-    evidencia: '',
-    evidencia_urls: [],
-    calificacion: 0,
-  });
-  const [uploadedImages, setUploadedImages] = useState([]);
-
-  // Cargar proyectos al inicio
   useEffect(() => {
-    loadProyectos();
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
+  // Función para formatear fechas
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  const [projects, setProjects] = useState([]);
+  const [project, setProject] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [openModal, setOpenModal] = useState(false);
+  const [modalData, setModalData] = useState({
+    actividad_planeada_id: '',
+    trimestre: 1,
+    observaciones: EditorState.createEmpty(),
+    evidencia: '',
+    evidenciaFile: null,
+    porcentaje_cumplimiento: 0,
+    unidades_cumplidas: 0,
+    obstaculos: EditorState.createEmpty(),
+    calificacion: '',
+    fecha_ejecucion: '',
+    documentacion_adjunta: null,
+    razon: EditorState.createEmpty()
+  });
+  const [plannedActivities, setPlannedActivities] = useState([]);
+
+  const proyectoId = searchParams.get('proyecto');
+
+  // Calculate total progress - must be before any conditional returns
+  const totalProgress = useMemo(() => {
+    if (!activities || activities.length === 0) return 0;
+    const total = activities.reduce((sum, activity) => sum + (Number(activity.porcentaje_cumplimiento) || 0), 0);
+    return activities.length > 0 ? Math.round(total / activities.length) : 0;
+  }, [activities]);
+
   useEffect(() => {
-    if (selectedProyecto) {
-      loadActividades();
-    }
-  }, [selectedProyecto, selectedAno]);
-
-  const loadProyectos = async () => {
-    try {
-      setIsLoading(true);
-      const data = await proyectosService.getProyectos();
-      setProyectos(data || []);
-    } catch (err) {
-      console.error('Error loading proyectos:', err);
-      setError('Error al cargar los proyectos');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadActividades = async () => {
-    try {
-      setIsLoading(true);
-      // Cargar actividades planificadas del proyecto
-      const planificadas = await actividadesService.getActividadesPlanificadasByProyecto(selectedProyecto);
-      setActividadesPlanificadas(planificadas || []);
-      
-      // Cargar actividades ejecutadas
-      const ejecutadas = await actividadesService.getActividadesEjecutadas();
-      setActividadesEjecutadas(ejecutadas || []);
-
-      // Cargar reportes del proyecto
-      if (selectedProyecto) {
-        try {
-          const reportesData = await reportesService.getReportesByProyecto(selectedProyecto);
-          setReportes(reportesData || []);
-        } catch (err) {
-          console.error('Error loading reportes:', err);
-          setReportes([]);
+    const loadProjects = async () => {
+      try {
+        if (mountedRef.current) setLoadingProjects(true);
+        const projectsData = await proyectosService.getProyectos();
+        if (mountedRef.current) {
+          setProjects(Array.isArray(projectsData) ? projectsData : []);
+          setLoadingProjects(false);
+        }
+      } catch (err) {
+        console.error('Error cargando proyectos:', err);
+        if (mountedRef.current) {
+          setError('Error al cargar la lista de proyectos');
+          setLoadingProjects(false);
         }
       }
-    } catch (err) {
-      console.error('Error loading actividades:', err);
-      setError('Error al cargar las actividades');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Obtener actividades ejecutadas para un trimestre específico (global 1-12)
-  const getActividadEjecutada = (actividadPlanificadaId, trimestreGlobal) => {
-    const { ano, trimestre } = getAnoYTrimestre(trimestreGlobal);
-    const actividadPlanificada = actividadesPlanificadas.find(ap => ap.id === actividadPlanificadaId);
-    if (!actividadPlanificada || actividadPlanificada.ano !== ano) return null;
-    
-    return actividadesEjecutadas.find(
-      (ae) => ae.actividad_planificada_id === actividadPlanificadaId && ae.trimestre === trimestre
-    );
-  };
-
-  // Calcular progreso de un trimestre global (1-12)
-  const calculateProgreso = (actividadPlanificadaId, trimestreGlobal) => {
-    const { ano, trimestre } = getAnoYTrimestre(trimestreGlobal);
-    const ejecutada = actividadesEjecutadas.find(
-      (ae) => ae.actividad_planificada_id === actividadPlanificadaId && 
-               ae.trimestre === trimestre &&
-               actividadesPlanificadas.find(ap => ap.id === actividadPlanificadaId)?.ano === ano
-    );
-    return ejecutada?.porcentaje_cumplimiento || 0;
-  };
-  const handleOpenDialog = (actividad, trimestre) => {
-    const ejecutada = getActividadEjecutada(actividad.id, trimestre);
-    if (ejecutada) {
-      setEditingActividad(ejecutada);
-      setFormData({
-        trimestre: ejecutada.trimestre,
-        real_actualizado: ejecutada.real_actualizado || 0,
-        porcentaje_cumplimiento: ejecutada.porcentaje_cumplimiento || 0,
-        observaciones: ejecutada.observaciones || '',
-        evidencia: ejecutada.evidencia || '',
-        calificacion: ejecutada.calificacion || 0,
-      });
-    } else {
-      setEditingActividad(null);
-      setFormData({
-        trimestre,
-        real_actualizado: 0,
-        porcentaje_cumplimiento: 0,
-        observaciones: '',
-        evidencia: '',
-        calificacion: 0,
-      });
-    }
-    setTrimestreActual(trimestre);
-    setOpenDialog(true);
-  };
-
-  // Handle image upload
-  const handleImageUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newImages = files.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name
-    }));
-    setUploadedImages([...uploadedImages, ...newImages]);
-    // Also update formData with image URLs for saving
-    const newUrls = newImages.map(img => img.preview);
-    setFormData({
-      ...formData,
-      evidencia_urls: [...formData.evidencia_urls, ...newUrls]
-    });
-  };
-
-  // Remove uploaded image
-  const removeImage = (index) => {
-    const newImages = [...uploadedImages];
-    // Revoke the URL to avoid memory leaks
-    if (newImages[index].preview) {
-      URL.revokeObjectURL(newImages[index].preview);
-    }
-    newImages.splice(index, 1);
-    setUploadedImages(newImages);
-    setFormData({
-      ...formData,
-      evidencia_urls: newImages.map(img => img.preview || img)
-    });
-  };
-
-  // Guardar avance trimestral
-  const handleSaveAvance = async () => {
-    try {
-      setIsLoading(true);
-      // Combine text evidence with image URLs
-      const evidenciaConImagenes = formData.evidencia_urls.length > 0 
-        ? JSON.stringify(formData.evidencia_urls)
-        : formData.evidencia;
-      
-      const data = {
-        actividad_planificada_id: editingActividad?.actividad_planificada_id || 
-          actividadesPlanificadas[0]?.id,
-        trimestre: trimestreActual,
-        real_actualizado: formData.real_actualizado,
-        porcentaje_cumplimiento: formData.porcentaje_cumplimiento,
-        observaciones: formData.observaciones,
-        evidencia: evidenciaConImagenes,
-        calificacion: formData.calificacion,
-      };
-
-      if (editingActividad?.id) {
-        await actividadesService.updateActividadEjecutada(editingActividad.id, data);
-      } else {
-        await actividadesService.createActividadEjecutada(data);
-      }
-
-      setOpenDialog(false);
-      loadActividades(); // Recargar datos
-    } catch (err) {
-      console.error('Error saving avance:', err);
-      setError('Error al guardar el avance');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Obtener color según porcentaje
-  const getProgresoColor = (porcentaje) => {
-    if (porcentaje >= 100) return 'success';
-    if (porcentaje >= 75) return 'info';
-    if (porcentaje >= 50) return 'warning';
-    return 'error';
-  };
-
-  // Trimestres disponibles
-  const trimestres = [1, 2, 3, 4];
-
-  // Obtener el año y trimestre del trimestre global
-  const getAnoYTrimestre = (trimestreGlobal) => {
-    return {
-      ano: Math.ceil(trimestreGlobal / 4),
-      trimestre: ((trimestreGlobal - 1) % 4) + 1
     };
-  };
 
-  // Filtrar actividades por año del trimestre seleccionado
-  const actividadesFiltradas = actividadesPlanificadas.filter(
-    (ap) => ap.ano === getAnoYTrimestre(trimestreActual).ano
-  );
+    loadProjects();
+  }, []);
 
-  // Obtener el proyecto seleccionado con todos sus datos
-  const proyectoSeleccionado = proyectos.find(p => p.id === selectedProyecto);
-
-  // Calcular avance trimestral del proyecto (basado en meta_total y metas trimestrales)
-  const getAvanceTrimestralProyecto = () => {
-    if (!proyectoSeleccionado) return null;
-    
-    const metaTotal = parseFloat(proyectoSeleccionado.meta_total) || 0;
-    const duracionAnos = parseInt(proyectoSeleccionado.duracion_anos) || 1;
-    const medidaTipo = proyectoSeleccionado.medida_tipo || 'porcentaje';
-    const totalTrimestres = duracionAnos * 4;
-    
-    // Obtener las metas trimestrales definidas en el proyecto
-    const trimestresData = proyectoSeleccionado.trimestres || [];
-    
-    // Calcular meta trimestral esperada basada en las metas definidas en el proyecto
-    // Si hay metas trimestrales definidas, usarlas; si no, calcular proporcional
-    const getMetaTrimestralEsperada = (trimestre) => {
-      // Buscar si hay una meta específica definida para este trimestre
-      const trData = trimestresData.find(t => 
-        t.trimestre === trimestre && t.ano === selectedAno
-      );
-      
-      if (trData && trData.meta > 0) {
-        return trData.meta;
-      }
-      
-      // Si no hay meta definida, calcular proporcional
-      return metaTotal / totalTrimestres;
-    };
-    
-    // Calcular avance acumulado hasta el trimestre actual usando las metas reales
-    let avanceAcumulado = 0;
-    let totalEsperadoAcumulado = 0;
-    
-    for (let tr = 1; tr <= trimestreActual; tr++) {
-      const metaTrimestral = getMetaTrimestralEsperada(tr);
-      totalEsperadoAcumulado += metaTrimestral;
-      
-      // Sumar avance de cada actividad en este trimestre
-      actividadesFiltradas.forEach(actividad => {
-        const ejecutada = getActividadEjecutada(actividad.id, tr);
-        if (ejecutada) {
-          if (medidaTipo === 'porcentaje') {
-            avanceAcumulado += ejecutada.porcentaje_cumplimiento || 0;
-          } else {
-            avanceAcumulado += ejecutada.real_actualizado || 0;
-          }
+  // carga el proyecto seleccionado y sus actividades
+  useEffect(() => {
+    const loadProjectAndActivities = async () => {
+      if (!proyectoId) {
+        if (mountedRef.current) {
+          setProject(null);
+          setActivities([]);
+          setPlannedActivities([]);
+          setLoading(false);
         }
-      });
-    }
-    
-    // Calcular porcentaje de avance
-    const avancePorcentaje = totalEsperadoAcumulado > 0 
-      ? Math.min(100, (avanceAcumulado / totalEsperadoAcumulado) * 100) 
-      : 0;
-    
-    return {
-      metaTotal,
-      medidaTipo,
-      duracionAnos,
-      totalTrimestres,
-      metaTrimestralEsperada: getMetaTrimestralEsperada(trimestreActual),
-      avanceAcumulado,
-      avancePorcentaje,
-      avanceTrimestre: tr => {
-        // Avance específico de un trimestre
-        let avance = 0;
-        actividadesFiltradas.forEach(actividad => {
-          const ejecutada = getActividadEjecutada(actividad.id, tr);
-          if (ejecutada) {
-            if (medidaTipo === 'porcentaje') {
-              avance += ejecutada.porcentaje_cumplimiento || 0;
-            } else {
-              avance += ejecutada.real_actualizado || 0;
-            }
-          }
-        });
-        return avance;
-      },
-      getMetaTrimestralEsperada
+        return;
+      }
+
+      try {
+        if (mountedRef.current) {
+          setLoading(true);
+          setError(null);
+        }
+        const [projectData, activitiesData] = await Promise.all([
+          proyectosService.getProyectoById(proyectoId),
+          actividadesService.getActividadesEjecutadasByProyecto(proyectoId),
+        ]);
+        if (mountedRef.current) {
+          setProject(projectData);
+          setActivities(Array.isArray(activitiesData) ? activitiesData : []);
+          setPlannedActivities(Array.isArray(projectData?.actividades) ? projectData.actividades : []);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Error cargando proyecto y actividades:', err);
+        if (mountedRef.current) {
+          setError('Error al cargar el proyecto y sus actividades: ' + (err.message || 'Error desconocido'));
+          setLoading(false);
+        }
+      }
     };
-  };
 
-  const avanceProyecto = getAvanceTrimestralProyecto();
+    loadProjectAndActivities();
+  }, [proyectoId]);
 
-  if (isLoading && proyectos.length === 0) {
+  if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress color="primary" />
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
       </Box>
     );
   }
 
-  return (
-    <Fade in>
-      <Box sx={{ px: 3, pb: 3 }}>
-        {/* Header */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 4, 
-            mb: 3, 
-            mt: 3,
-            background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
-            color: 'white',
-            borderRadius: 4,
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'linear-gradient(45deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
-              pointerEvents: 'none',
-            }
-          }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-            <Box>
-              <Typography variant="h4" component="h1" fontWeight="bold">
-                Avance Trimestral
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        {error}
+      </Alert>
+    );
+  }
+
+  // Proyecto no seleccionado
+  if (!project) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2, maxWidth: 600, mx: 'auto' }}>
+          <Typography variant="h5" fontWeight="bold" color="primary" gutterBottom>
+            📊 Avance Trimestral de Proyectos
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Selecciona un proyecto para ver su avance trimestral
+          </Typography>
+
+          {loadingProjects ? (
+            <CircularProgress />
+          ) : (
+            <FormControl fullWidth sx={{ maxWidth: 400, mx: 'auto' }}>
+              <InputLabel>Seleccionar Proyecto</InputLabel>
+              <Select
+                value=""
+                label="Seleccionar Proyecto"
+                onChange={(e) => {
+                  setSearchParams({ proyecto: e.target.value });
+                }}
+                size="medium"
+                sx={{
+                  minHeight: 56,
+                  '& .MuiSelect-select': {
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    fontSize: '1rem',
+                  }
+                }}
+              >
+                {projects.length === 0 ? (
+                  <MenuItem disabled>No hay proyectos disponibles</MenuItem>
+                ) : (
+                  projects.map((proj) => (
+                    <MenuItem
+                      key={proj.id}
+                      value={proj.id}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        padding: '12px 16px',
+                        minHeight: '60px',
+                        whiteSpace: 'normal',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        fontWeight="medium"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%',
+                          fontSize: '1rem',
+                        }}
+                      >
+                        {proj.nombre}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '0.875rem',
+                          marginTop: '2px',
+                        }}
+                      >
+                        Estado: {proj.estado_actual}
+                      </Typography>
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
+          )}
+
+          {projects.length === 0 && !loadingProjects && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                No hay proyectos registrados. Crea un proyecto primero.
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9, mt: 1 }}>
-                Captura el progreso de cada proyecto por trimestre
-              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate('/proyectos')}
+                sx={{ bgcolor: '#800020' }}
+              >
+                Ir a Gestión de Proyectos
+              </Button>
             </Box>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 3 }}>
+              {error}
+            </Alert>
+          )}
+        </Paper>
+      </Box>
+    );
+  }
+
+  // 5. Función para guardar el progreso editado de una actividad
+  const handleSaveActivityProgress = async (activityId, newProgress) => {
+    try {
+      const updateData = { porcentaje_cumplimiento: newProgress };
+      const updatedActivity = await actividadesService.updateActividadEjecutada(activityId, updateData);
+      if (mountedRef.current) {
+        setActivities((prev) =>
+          prev.map((activity) =>
+            activity.id === activityId ? { ...activity, porcentaje_cumplimiento: updatedActivity.porcentaje_cumplimiento } : activity
+          )
+        );
+        setEditingActivity(null);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError('Error al guardar el progreso de la actividad: ' + (err.message || 'Error desconocido'));
+      }
+    }
+  };
+
+  // Funciones para el modal de registro de avances
+  const handleOpenModal = (activity = null) => {
+    if (activity) {
+      setModalData({
+        actividad_planeada_id: activity.actividad_planeada_id || '',
+        trimestre: activity.trimestre || 1,
+        observaciones: activity.descripcion ? EditorState.createWithContent(ContentState.createFromText(activity.descripcion)) : EditorState.createEmpty(),
+        evidencia: activity.evidencia || '',
+        evidenciaFile: null,
+        porcentaje_cumplimiento: activity.porcentaje_cumplimiento || 0,
+        unidades_cumplidas: 0,
+        obstaculos: EditorState.createEmpty(),
+        calificacion: '',
+        fecha_ejecucion: '',
+        documentacion_adjunta: null,
+        razon: EditorState.createEmpty()
+      });
+    } else {
+      setModalData({
+        actividad_planeada_id: '',
+        trimestre: 1,
+        observaciones: EditorState.createEmpty(),
+        evidencia: '',
+        evidenciaFile: null,
+        porcentaje_cumplimiento: 0,
+        unidades_cumplidas: 0,
+        obstaculos: EditorState.createEmpty(),
+        calificacion: '',
+        fecha_ejecucion: '',
+        documentacion_adjunta: null,
+        razon: EditorState.createEmpty()
+      });
+    }
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setModalData({
+      actividad_planeada_id: '',
+      trimestre: 1,
+      observaciones: EditorState.createEmpty(),
+      evidencia: '',
+      evidenciaFile: null,
+      porcentaje_cumplimiento: 0,
+      unidades_cumplidas: 0,
+      obstaculos: EditorState.createEmpty(),
+      calificacion: '',
+      fecha_ejecucion: '',
+      documentacion_adjunta: null,
+      razon: EditorState.createEmpty()
+    });
+  };
+
+  const handleSaveModal = async () => {
+    try {
+      const localSelected = plannedActivities.find(pa => pa.id == modalData.actividad_planeada_id);
+      const activityData = {
+        actividad_planeada_id: null,
+        proyecto_id: parseInt(proyectoId),
+        trimestre: parseInt(modalData.trimestre),
+        observaciones: draftToHtml(convertToRaw(modalData.observaciones.getCurrentContent())),
+        evidencia: modalData.evidenciaFile ? modalData.evidenciaFile.name : modalData.evidencia,
+        porcentaje_cumplimiento: parseInt(modalData.porcentaje_cumplimiento),
+        obstaculos: draftToHtml(convertToRaw(modalData.obstaculos.getCurrentContent())),
+        calificacion: modalData.calificacion ? parseInt(modalData.calificacion) : null,
+        razon: draftToHtml(convertToRaw(modalData.razon.getCurrentContent())),
+        documentacion_adjunta: modalData.documentacion_adjunta ? modalData.documentacion_adjunta.name : null
+      };
+
+      const newActivity = await actividadesService.createActividadEjecutada(activityData);
+      if (mountedRef.current) {
+        setActivities(prev => [...prev, {
+          ...newActivity,
+          nombre: localSelected?.descripcion || 'Nueva actividad'
+        }]);
+        handleCloseModal();
+        toast.success('Avance registrado exitosamente');
+      }
+    } catch (err) {
+      const errorMsg = 'Error al registrar el avance: ' + (err.message || 'Error desconocido');
+      if (mountedRef.current) {
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
+    }
+  };
+
+  const handleModalDataChange = (field, value) => {
+    if (field === 'actividad_planeada_id') {
+      setModalData(prev => ({ ...prev, [field]: value, unidades_cumplidas: 0, porcentaje_cumplimiento: 0, obstaculos: EditorState.createEmpty(), calificacion: '', fecha_ejecucion: '', documentacion_adjunta: null, razon: EditorState.createEmpty(), observaciones: EditorState.createEmpty() }));
+    } else {
+      setModalData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+
+
+  return (
+    <Box>
+      {/* Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          mb: 3,
+          background: 'linear-gradient(135deg, #800020 0%, #5c0017 100%)',
+          color: 'white',
+          borderRadius: 3,
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="h4" component="h1" fontWeight="bold">
+              Avance Trimestral - {project.nombre}
+            </Typography>
+            <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
+              Vista de progreso por trimestre de todas las actividades del proyecto
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="contained"
-              startIcon={<ReportIcon />}
-              onClick={() => selectedProyecto && setOpenReportesModal(true)}
-              disabled={!selectedProyecto}
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+              sx={{ bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}
+            >
+              Registrar Avance
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<TrendingUpIcon />}
+              onClick={() => navigate('/proyectos')}
               sx={{
-                bgcolor: 'white',
-                color: 'primary.main',
-                fontWeight: 'bold',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                height: 'fit-content'
+                borderColor: 'rgba(255,255,255,0.5)',
+                color: 'white',
+                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' },
               }}
             >
-              Generar Reporte
+              Volver a Proyectos
             </Button>
           </Box>
-        </Paper>
+        </Box>
+      </Paper>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
+      {/* Información del Proyecto */}
+      <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden', mb: 3 }}>
+        <Grid container spacing={2} sx={{ p: 3 }}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="h6" color="primary" fontWeight="bold">
+              Información del Proyecto
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Chip
+                  label={`Estado: ${project.estado_actual || 'Activo'}`}
+                  color={project.estado_actual === 'Activo' ? 'success' : 'info'}
+                  size="small"
+                />
+              </Grid>
+               <Grid item xs={6}>
+                 <Typography variant="caption" color="text.secondary">Fecha Inicio</Typography>
+                 <Typography variant="body2">{formatDate(project.fecha_inicio)}</Typography>
+               </Grid>
+               <Grid item xs={6}>
+                 <Typography variant="caption" color="text.secondary">Fecha Fin</Typography>
+                 <Typography variant="body2">{formatDate(project.fecha_fin)}</Typography>
+               </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Presupuesto</Typography>
+                <Typography variant="body2">
+                  {project.presupuesto_id ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(project.presupuesto_monto || 0) : 'Sin presupuesto'}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Duración</Typography>
+                <Typography variant="body2">{project.duracion_anos || 1} año(s)</Typography>
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Paper>
 
-        {/* Filtros */}
-        <Paper sx={{ p: 4, mb: 3, borderRadius: 3 }}>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: 250 }}>
-                <InputLabel>Seleccionar Proyecto</InputLabel>
+      {/* Tabla de Actividades */}
+      <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.50' }}>
+                <TableCell><strong>Actividad</strong></TableCell>
+                <TableCell align="center"><strong>Trimestre</strong></TableCell>
+                <TableCell align="center"><strong>Progreso</strong></TableCell>
+                <TableCell align="center"><strong>Acciones</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {activities.map((activity) => {
+                const isEditing = editingActivity?.id === activity.id;
+                const progressValue = Number(activity.porcentaje_cumplimiento) || 0;
+
+                return (
+                  <TableRow key={activity.id} hover>
+                    <TableCell>
+                      {isEditing ? (
+                        <TextField
+                          size="small"
+                          value={editingActivity?.nombre || ''}
+                          onChange={(e) => setEditingActivity((prev) =>
+                            prev ? { ...prev, nombre: e.target.value } : prev
+                          )}
+                          fullWidth
+                        />
+                      ) : (
+                        <Typography variant="body2">{activity.nombre}</Typography>
+                      )}
+                      <Typography variant="caption" color="text.secondary">
+                        {activity.descripcion}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      {isEditing ? (
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={editingActivity?.trimestre || ''}
+                          onChange={(e) => setEditingActivity((prev) =>
+                            prev ? { ...prev, trimestre: e.target.value } : prev
+                          )}
+                          sx={{ width: 80 }}
+                        />
+                      ) : (
+                        <Chip
+                          label={`T${activity.trimestre || 1}`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      {isEditing ? (
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs>
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={editingActivity?.porcentaje || ''}
+                              onChange={(e) => setEditingActivity((prev) =>
+                                prev ? { ...prev, porcentaje: e.target.value } : prev
+                              )}
+                              fullWidth
+                            />
+                          </Grid>
+                          <Grid item>
+                            <Chip
+                              label={`${editingActivity?.porcentaje || 0}%`}
+                              size="small"
+                              color="info"
+                            />
+                          </Grid>
+                        </Grid>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 100, bgcolor: 'grey.200', borderRadius: 1, height: 8, overflow: 'hidden' }}>
+                            <Box
+                              sx={{
+                                width: `${progressValue}%`,
+                                bgcolor: progressValue >= 100 ? 'success.main' : 'primary.main',
+                                height: '100%',
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="caption">{progressValue}%</Typography>
+                        </Box>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      {isEditing ? (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Tooltip title="Guardar">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={async () => {
+                                if (editingActivity) {
+                                  await handleSaveActivityProgress(editingActivity.id, editingActivity.porcentaje);
+                                }
+                              }}
+                            >
+                              <SaveIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Cancelar">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setEditingActivity(null)}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ) : (
+                        <Tooltip title="Editar progreso">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => {
+                                setEditingActivity({
+                                  ...activity,
+                                  porcentaje: activity.porcentaje_cumplimiento
+                                });
+                              }}
+                            >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Resumen del Progreso Global */}
+      <Paper
+        elevation={1}
+        sx={{
+          mt: 3,
+          p: 3,
+          borderRadius: 3,
+          bgcolor: 'action.hover',
+        }}
+      >
+        <Typography variant="h6" color="primary" fontWeight="bold" gutterBottom>
+          <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Progreso Global del Proyecto
+        </Typography>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ width: 120, bgcolor: 'grey.200', borderRadius: 2, height: 12, flex: 1, overflow: 'hidden' }}>
+                <Box
+                  sx={{
+                    width: `${totalProgress}%`,
+                    bgcolor: totalProgress >= 100 ? 'success.main' : 'primary.main',
+                    height: '100%',
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </Box>
+              <Typography variant="h5" fontWeight="bold" color={totalProgress >= 100 ? 'success.main' : 'primary.main'}>
+                {totalProgress}%
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Grid container spacing={2}>
+              {activities.map((activity) => (
+                <Grid item xs={6} sm={4} key={activity.id}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                      {activity.nombre}
+                    </Typography>
+                    <Typography variant="h6" fontWeight="bold" color="primary">
+                      {activity.porcentaje_cumplimiento || 0}%
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      T{activity.trimestre}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Modal para registrar avances */}
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#800020', color: 'white' }}>
+          Registrar Avance Trimestral
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {/* Planificación */}
+          <Typography variant="h6" color="primary" gutterBottom>
+            Planificación
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Actividad Planificada</InputLabel>
                 <Select
-                  value={selectedProyecto}
-                  label="Seleccionar Proyecto"
-                  onChange={(e) => setSelectedProyecto(e.target.value)}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  value={modalData.actividad_planeada_id}
+                  label="Actividad Planificada"
+                  onChange={(e) => handleModalDataChange('actividad_planeada_id', e.target.value)}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
-                  <MenuItem value="">
-                    <em>Seleccione un proyecto</em>
-                  </MenuItem>
-                  {proyectos.map((proyecto) => (
-                    <MenuItem key={proyecto.id} value={proyecto.id}>
-                      {proyecto.nombre}
+                  {plannedActivities.map((activity) => (
+                    <MenuItem key={activity.id} value={activity.id}>
+                      {activity.descripcion}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            {/* <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ minWidth: 180 }}>
-                <InputLabel>Año del Proyecto</InputLabel>
+            <Grid item xs={12}>
+              {modalData.actividad_planeada_id && (() => {
+                const selected = plannedActivities.find(pa => pa.id == modalData.actividad_planeada_id);
+                return (
+                  <>
+                    <Typography variant="body2" color="text.secondary">
+                      Meta planificada: {selected?.descripcion}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Meta: {selected?.meta_total} {selected?.medida_tipo === 'porcentaje' ? '%' : 'unidades'}
+                    </Typography>
+                  </>
+                );
+              })()}
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Detalles de Ejecución */}
+          <Typography variant="h6" color="primary" gutterBottom>
+            Detalles de Ejecución
+          </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Trimestre</InputLabel>
+                  <Select
+                    value={modalData.trimestre}
+                    label="Trimestre"
+                    onChange={(e) => handleModalDataChange('trimestre', e.target.value)}
+                    size="medium"
+                    sx={{
+                      minHeight: 56,
+                      '& .MuiSelect-select': {
+                        paddingTop: '14px',
+                        paddingBottom: '14px',
+                        fontSize: '1rem',
+                      }
+                    }}
+                  >
+                    <MenuItem value={1}>Primer Trimestre</MenuItem>
+                    <MenuItem value={2}>Segundo Trimestre</MenuItem>
+                    <MenuItem value={3}>Tercer Trimestre</MenuItem>
+                    <MenuItem value={4}>Cuarto Trimestre</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+              <Typography variant="body1" fontWeight="medium" gutterBottom>
+                ¿Qué se realizó?
+              </Typography>
+              <Editor
+                editorState={modalData.observaciones}
+                onEditorStateChange={(editorState) => handleModalDataChange('observaciones', editorState)}
+                placeholder="Describe las actividades realizadas en este trimestre..."
+                toolbar={{
+                  options: ['inline', 'blockType', 'fontSize', 'list', 'textAlign', 'colorPicker', 'link', 'emoji', 'history'],
+                  inline: { inDropdown: true },
+                  list: { inDropdown: true },
+                  textAlign: { inDropdown: true },
+                  link: { inDropdown: true },
+                }}
+                editorStyle={{
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  minHeight: '120px',
+                  padding: '10px',
+                }}
+              />
+            </Grid>
+            </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Evidencias */}
+          <Typography variant="h6" color="primary" gutterBottom>
+            Evidencias
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Evidencia fotográfica</Typography>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleModalDataChange('evidenciaFile', e.target.files[0])}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Sube una imagen de evidencia (opcional)
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Fecha de ejecución"
+                type="date"
+                value={modalData.fecha_ejecucion}
+                onChange={(e) => handleModalDataChange('fecha_ejecucion', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Calificación</InputLabel>
                 <Select
-                  value={selectedAno}
-                  label="Año del Proyecto"
-                  onChange={(e) => setSelectedAno(e.target.value)}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  value={modalData.calificacion}
+                  label="Calificación"
+                  onChange={(e) => handleModalDataChange('calificacion', e.target.value)}
+                  size="medium"
+                  sx={{
+                    minHeight: 56,
+                    '& .MuiSelect-select': {
+                      paddingTop: '14px',
+                      paddingBottom: '14px',
+                      fontSize: '1rem',
+                    }
+                  }}
                 >
-                  <MenuItem value={1}>Año 1</MenuItem>
-                  <MenuItem value={2}>Año 2</MenuItem>
-                  <MenuItem value={3}>Año 3</MenuItem>
+                  <MenuItem value=""><em>Sin calificación</em></MenuItem>
+                  <MenuItem value={1}>1 - Muy malo</MenuItem>
+                  <MenuItem value={2}>2 - Malo</MenuItem>
+                  <MenuItem value={3}>3 - Regular</MenuItem>
+                  <MenuItem value={4}>4 - Bueno</MenuItem>
+                  <MenuItem value={5}>5 - Excelente</MenuItem>
                 </Select>
               </FormControl>
-            </Grid> */}
-          </Grid>
-        </Paper>
-
-        {selectedProyecto && (
-          <>
-            {/* Tabs de Trimestres - Agrupados por Año */}
-            <Paper sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }}>
-              {/* Encabezado con Años */}
-              <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'primary.main', color: 'white', p: 2 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  📅 Trimestres del Proyecto
-                </Typography>
-              </Box>
-              
-              {/* Trimestres agrupados por año */}
-              {Array.from({ length: proyectoSeleccionado?.duracion_anos || 1 }, (_, yearIndex) => {
-                const ano = yearIndex + 1;
-                return (
-                  <Box key={ano} sx={{ mb: ano < (proyectoSeleccionado?.duracion_anos || 1) ? 2 : 0 }}>
-                    {/* Título del Año */}
-                    <Box sx={{ bgcolor: 'grey.100', p: 1.5, borderBottom: '1px solid #ddd' }}>
-                      <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
-                        Año {ano}
-                      </Typography>
-                    </Box>
-                    
-                    {/* Trimestres del Año */}
-                    <Box sx={{ borderBottom: .5, borderColor: 'divider', bgcolor: 'grey.50' }}>
-                      <Grid container>
-                        {[1, 2, 3, 4].map((tr) => {
-                          const trimestreGlobal = (ano - 1) * 4 + tr;
-                          const promedioTrimestre = actividadesFiltradas.length > 0
-                            ? actividadesFiltradas.reduce((sum, ap) => 
-                                sum + calculateProgreso(ap.id, trimestreGlobal), 0) / actividadesFiltradas.length
-                            : 0;
-                          
-                          return (
-                            <Grid item xs={6} md={3} key={trimestreGlobal}>
-                              <Box
-                                sx={{
-                                  p: 1,
-                                  textAlign: 'center',
-                                  cursor: 'pointer',
-                                  bgcolor: trimestreActual === trimestreGlobal ? 'primary.main' : 'transparent',
-                                  color: trimestreActual === trimestreGlobal ? 'white' : 'text.primary',
-                                  transition: 'all 0.3s ease',
-                                  borderBottom: trimestreActual === trimestreGlobal ? 'none' : '3px solid transparent',
-                                  '&:hover': {
-                                    bgcolor: trimestreActual === trimestreGlobal ? 'primary.dark' : 'rgba(128, 0, 32, 0.08)',
-                                  },
-                                }}
-                                onClick={() => setTrimestreActual(trimestreGlobal)}
-                              >
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                  Trimestre {tr}
-                                </Typography>
-                                <Box sx={{ mt: 1 }}>
-                                  <LinearProgress
-                                    variant="determinate"
-                                    value={promedioTrimestre}
-                                    sx={{
-                                      height: 10,
-                                      borderRadius: .5,
-                                      bgcolor: trimestreActual === trimestreGlobal ? 'rgba(255,255,255,0.3)' : 'grey.200',
-                                      '& .MuiLinearProgress-bar': {
-                                        bgcolor: trimestreActual === trimestreGlobal ? 'white' : 'primary.main',
-                                        borderRadius: .5,
-                                      },
-                                    }}
-                                  />
-                                  <Typography variant="caption" sx={{ mt: .25, display: 'block', opacity: 0.9 }}>
-                                    {promedioTrimestre.toFixed(0)}%
-                                  </Typography>
-                                </Box>
-                              </Box>
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Paper>
-
-            {/* Resumen del Avance Trimestral del Proyecto */}
-            {proyectoSeleccionado && avanceProyecto && (
-              <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'grey.50' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: 'primary.main' }}>
-                  📊 Resumen de Avance del Proyecto
-                </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={3}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Meta Total
-                        </Typography>
-                        <Typography variant="h5" fontWeight="bold" color="primary.main">
-                          {avanceProyecto.metaTotal} {avanceProyecto.medidaTipo === 'porcentaje' ? '%' : 'uds'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Duración: {avanceProyecto.duracionAnos} año(s)
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Meta Trimestral Esperada
-                        </Typography>
-                        <Typography variant="h5" fontWeight="bold" color="info.main">
-                          {avanceProyecto.metaTrimestralEsperada.toFixed(2)} {avanceProyecto.medidaTipo === 'porcentaje' ? '%' : 'uds'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {avanceProyecto.totalTrimestres} trimestres total
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Avance Trimestre {trimestreActual}
-                        </Typography>
-                        <Typography variant="h5" fontWeight="bold" color="success.main">
-                          {avanceProyecto.avanceTrimestre(trimestreActual).toFixed(2)} {avanceProyecto.medidaTipo === 'porcentaje' ? '%' : 'uds'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                      a lo {avanceProyecto.metaTrimestralEsperada.toFixed(2)} esperado
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Card sx={{ height: '100%', bgcolor: avanceProyecto.avancePorcentaje >= 100 ? 'success.light' : avanceProyecto.avancePorcentaje >= 75 ? 'info.light' : avanceProyecto.avancePorcentaje >= 50 ? 'warning.light' : 'error.light' }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Avance Acumulado
-                        </Typography>
-                        <Typography variant="h5" fontWeight="bold">
-                          {avanceProyecto.avancePorcentaje.toFixed(1)}%
-                        </Typography>
-                        <Typography variant="caption">
-                          {avanceProyecto.avanceAcumulado.toFixed(2)} / {avanceProyecto.metaTotal} {avanceProyecto.medidaTipo === 'porcentaje' ? '%' : 'uds'}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-                
-                {/* Indicador visual de avance vs esperado */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-                    Progreso esperado contra real (Trimestre {trimestreActual}):
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                      Esperado:
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={100}
-                      sx={{ flex: 1, height: 20, borderRadius: 2, bgcolor: 'grey.200' }}
-                      color="info"
-                    />
-                    <Typography variant="body2" fontWeight="bold" sx={{ minWidth: 60 }}>
-                      {avanceProyecto.metaTrimestralEsperada.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                      Real:
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={Math.min(100, (avanceProyecto.avanceTrimestre(trimestreActual) / avanceProyecto.metaTrimestralEsperada) * 100)}
-                      sx={{ flex: 1, height: 20, borderRadius: 2, bgcolor: 'grey.200' }}
-                      color={avanceProyecto.avanceTrimestre(trimestreActual) >= avanceProyecto.metaTrimestralEsperada ? 'success' : 'warning'}
-                    />
-                    <Typography variant="body2" fontWeight="bold" sx={{ minWidth: 60 }}>
-                      {avanceProyecto.avanceTrimestre(trimestreActual).toFixed(2)}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-            )}
-            {/* Sección de Reportes del Trimestre */}
-            {reportes.length > 0 && (
-              <Paper sx={{ mt: 3, borderRadius: 3, overflow: 'hidden' }}>
-                <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
-                  <Typography variant="h6" fontWeight="bold">
-                    📋 Reportes del Trimestre
-                  </Typography>
-                </Box>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: 'grey.50' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Título</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Tipo</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Cumplimiento</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Estado</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Fecha</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {reportes
-                        .filter(r => r.trimestre === trimestreActual && r.ano === selectedAno)
-                        .map((reporte) => (
-                          <TableRow key={reporte.id} hover>
-                            <TableCell>{reporte.titulo}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={reporte.tipo_reporte === 'trimestral' ? 'Trimestral' : 'Anual'} 
-                                size="small" 
-                                color={reporte.tipo_reporte === 'trimestral' ? 'primary' : 'secondary'}
-                              />
-                            </TableCell>
-                            <TableCell>{reporte.cumplimiento_meta}%</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={reporte.estado} 
-                                size="small" 
-                                color={
-                                  reporte.estado === 'aprobado' ? 'success' : 
-                                  reporte.estado === 'enviado' ? 'info' : 
-                                  reporte.estado === 'rechazado' ? 'error' : 'default'
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {new Date(reporte.created_at).toLocaleDateString('es-ES')}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            )}
-          </>
-        )}
-
-        {/* Dialog para capturar avance */}
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                Capturar Avance - Trimestre {trimestreActual}
-              </Typography>
-              <IconButton onClick={() => setOpenDialog(false)} sx={{ color: 'white' }}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Cantidad Real Lograda"
-                  type="number"
-                  value={formData.real_actualizado}
-                  onChange={(e) => setFormData({ ...formData, real_actualizado: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Porcentaje de Cumplimiento (%)"
-                  type="number"
-                  inputProps={{ min: 0, max: 100 }}
-                  value={formData.porcentaje_cumplimiento}
-                  onChange={(e) => setFormData({ ...formData, porcentaje_cumplimiento: Number(e.target.value) })}
-                  helperText="Ingrese el porcentaje de avance (0-100)"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Evidencia / Evidencias"
-                  multiline
-                  rows={3}
-                  value={formData.evidencia}
-                  onChange={(e) => setFormData({ ...formData, evidencia: e.target.value })}
-                  placeholder="Describa las evidencias: fotos, documentos, etc."
-                />
-              </Grid>
-              {/* Image Upload Section */}
-              <Grid item xs={12}>
-                <Paper variant="outlined" sx={{ p: 2, borderStyle: 'dashed', borderColor: 'grey.400' }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Subir Evidencias (Imágenes)
-                  </Typography>
-                  <input
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="image-upload"
-                    type="file"
-                    multiple
-                    onChange={handleImageUpload}
-                  />
-                  <label htmlFor="image-upload">
-                    <Button
-                      variant="contained"
-                      component="span"
-                      startIcon={<PhotoIcon />}
-                      sx={{ mb: 2 }}
-                    >
-                      Seleccionar Imágenes
-                    </Button>
-                  </label>
-                  {uploadedImages.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-                        Imágenes adjuntas ({uploadedImages.length}):
-                      </Typography>
-                      <Grid container spacing={1}>
-                        {uploadedImages.map((img, index) => (
-                          <Grid item xs={4} key={index}>
-                            <Box sx={{ position: 'relative' }}>
-                              <img
-                                src={img.preview || img}
-                                alt={`Evidencia ${index + 1}`}
-                                style={{ 
-                                  width: '100%', 
-                                  height: 80, 
-                                  objectFit: 'cover', 
-                                  borderRadius: 8,
-                                  border: '1px solid #ddd'
-                                }}
-                              />
-                              <IconButton
-                                size="small"
-                                onClick={() => removeImage(index)}
-                                sx={{ 
-                                  position: 'absolute', 
-                                  top: -8, 
-                                  right: -8, 
-                                  bgcolor: 'error.main',
-                                  color: 'white',
-                                  '&:hover': { bgcolor: 'error.dark' },
-                                  width: 24,
-                                  height: 24
-                                }}
-                              >
-                                <CloseIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Box>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Box>
-                  )}
-                </Paper>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Observaciones"
-                  multiline
-                  rows={3}
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  placeholder="Observaciones adicionales sobre el avance"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Calificación (0-10)"
-                  type="number"
-                  inputProps={{ min: 0, max: 10, step: 0.1 }}
-                  value={formData.calificacion}
-                  onChange={(e) => setFormData({ ...formData, calificacion: Number(e.target.value) })}
-                />
-              </Grid>
             </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button onClick={() => setOpenDialog(false)} color="inherit">
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSaveAvance} 
-              variant="contained" 
-              color="primary"
-              startIcon={<SaveIcon />}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Guardando...' : 'Guardar Avance'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Modal de Gestionar Reportes */}
-        {selectedProyecto && (
-          <GestionarReportesModal
-            isOpen={openReportesModal}
-            onClose={() => setOpenReportesModal(false)}
-            proyecto={proyectoSeleccionado}
-            onReportesActualizados={() => loadActividades()}
-          />
-        )}
-      </Box>
-    </Fade>
-  );
-};
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Documentación adicional</Typography>
+              <input
+                type="file"
+                onChange={(e) => handleModalDataChange('documentacion_adjunta', e.target.files[0])}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Sube documentación adicional (opcional)
+              </Typography>
+            </Grid>
+          </Grid>
 
-export default AvanceTrimestral;
+          <Divider sx={{ my: 3 }} />
+
+          {/* Evaluación */}
+          <Typography variant="h6" color="primary" gutterBottom>
+            Evaluación
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="body1" fontWeight="medium" gutterBottom>
+                Razón del avance
+              </Typography>
+              <Editor
+                editorState={modalData.razon}
+                onEditorStateChange={(editorState) => handleModalDataChange('razon', editorState)}
+                placeholder="Explica la razón o justificación del avance logrado..."
+                toolbar={{
+                  options: ['inline', 'blockType', 'fontSize', 'list', 'textAlign', 'colorPicker', 'link', 'emoji', 'history'],
+                  inline: { inDropdown: true },
+                  list: { inDropdown: true },
+                  textAlign: { inDropdown: true },
+                  link: { inDropdown: true },
+                }}
+                editorStyle={{
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  minHeight: '80px',
+                  padding: '10px',
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Documentación adicional</Typography>
+              <input
+                type="file"
+                onChange={(e) => handleModalDataChange('documentacion_adjunta', e.target.files[0])}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Sube documentación adicional (opcional)
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              {(() => {
+                const selected = plannedActivities.find(pa => pa.id == modalData.actividad_planeada_id);
+                const isPorcentaje = selected?.medida_tipo === 'porcentaje';
+                return (
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label={isPorcentaje ? "Porcentaje de cumplimiento (%)" : "Unidades cumplidas"}
+                    value={isPorcentaje ? modalData.porcentaje_cumplimiento : modalData.unidades_cumplidas}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      if (isPorcentaje) {
+                        handleModalDataChange('porcentaje_cumplimiento', value);
+                      } else {
+                        handleModalDataChange('unidades_cumplidas', value);
+                        const meta = selected?.meta_total || 1;
+                        const porcentaje = meta > 0 ? (value / meta) * 100 : 0;
+                        handleModalDataChange('porcentaje_cumplimiento', Math.min(porcentaje, 100));
+                      }
+                    }}
+                    InputProps={{
+                      inputProps: {
+                        min: 0,
+                        max: isPorcentaje ? 100 : (selected?.meta_total || 0)
+                      }
+                    }}
+                    helperText={isPorcentaje ? "Porcentaje de avance logrado (0-100%)" : `Unidades completadas (0-${selected?.meta_total || 0})`}
+                  />
+                );
+              })()}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveModal}
+            variant="contained"
+            sx={{ bgcolor: '#800020' }}
+            disabled={!modalData.actividad_planeada_id || !modalData.observaciones.getCurrentContent().hasText()}
+          >
+            Registrar Avance
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}

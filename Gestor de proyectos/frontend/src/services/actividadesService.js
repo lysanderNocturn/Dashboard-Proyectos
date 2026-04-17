@@ -33,8 +33,13 @@ export const actividadesService = {
     return response.data;
   },
 
-  async getActividadesEjecutadasByActividad(actividadPlanificadaId) {
-    const response = await api.get(`/actividades-ejecutadas?actividad_planificada_id=${actividadPlanificadaId}`);
+  async getActividadesEjecutadasByProyecto(proyectoId) {
+    const response = await api.get(`/actividades-ejecutadas?proyecto_id=${proyectoId}`);
+    return response.data;
+  },
+
+  async updateActividadProgress(id, progreso) {
+    const response = await api.put(`/actividades-ejecutadas/${id}/progress`, { progreso });
     return response.data;
   },
 

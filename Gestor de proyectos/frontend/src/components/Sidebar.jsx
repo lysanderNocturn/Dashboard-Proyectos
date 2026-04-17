@@ -23,10 +23,11 @@ import {
   AttachMoney as MoneyIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   Circle as CircleIcon,
+  Brightness4 as DarkIcon,
+  Brightness7 as LightIcon,
 } from '@mui/icons-material';
-
-const drawerWidth = 280;
 
 const navItems = [
   { path: '/dashboard', label: 'Inicio', icon: <DashboardIcon />, badge: null },
@@ -37,11 +38,12 @@ const navItems = [
   { path: '/usuarios', label: 'Usuarios', icon: <PeopleIcon />, badge: null },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ open, onToggle, mode, setMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const drawerWidth = open ? 280 : 72;
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
@@ -67,21 +69,40 @@ const Sidebar = () => {
           color: 'white',
           borderRight: '1px solid rgba(255,255,255,0.1)',
           boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
+          transition: 'width 0.3s ease-in-out',
+          overflowX: 'hidden',
         },
       }}
-    >
+      >
       {/* Header con Logo */}
       <Box sx={{ 
-        p: 3, 
+        p: open ? 3 : 1.5, 
         textAlign: 'center', 
         borderBottom: '1px solid rgba(255,255,255,0.1)',
         background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+        display: 'flex',
+        flexDirection: open ? 'block' : 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.3s ease-in-out',
       }}>
+        <IconButton
+          onClick={onToggle}
+          sx={{
+            color: 'rgba(255,255,255,0.8)',
+            mb: open ? 2 : 0,
+            transition: 'transform 0.3s ease-in-out',
+            '&:hover': {
+              transform: 'scale(1.1)',
+            },
+          }}
+        >
+          {open ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+        </IconButton>
         <Box
           sx={{
-            position: 'relative',
-            width: 70,
-            height: 70,
+            width: 60,
+            height: 50,
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #a24b4b 0%, #800020 100%)',
             display: 'flex',
@@ -91,35 +112,56 @@ const Sidebar = () => {
             mb: 2,
             boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
             border: '3px solid rgba(255,255,255,0.2)',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-            '&:hover': {
-              transform: 'scale(1.05)',
-              boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
-            },
+            opacity: open ? 1 : 0,
+            transform: open ? 'scale(1)' : 'scale(0.8)',
+            transition: 'all 0.3s ease-in-out',
+            pointerEvents: open ? 'auto' : 'none',
+            position: open ? 'relative' : 'absolute',
           }}
         >
-          <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white' }}>
             GP
           </Typography>
         </Box>
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            fontWeight: 'bold', 
-            mb: 0.5,
-            background: 'linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.8) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          Gestor de Proyectos
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-          <CircleIcon sx={{ fontSize: 8, color: '#4caf50' }} />
-          <Typography variant="caption" sx={{ opacity: 0.8, color: '#4caf50' }}>
-            Sistema activo
-          </Typography>
+        <Box sx={{
+          opacity: open ? 1 : 0,
+          transform: open ? 'translateY(0)' : 'translateY(-10px)',
+          transition: 'all 0.3s ease-in-out',
+          pointerEvents: open ? 'auto' : 'none',
+          position: open ? 'relative' : 'absolute',
+          width: '100%',
+        }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 'bold', 
+              mb: 0.5,
+              background: 'linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.8) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Gestor de Proyectos
+          </Typography>            
         </Box>
+      </Box>
+
+      {/* Dark Mode Toggle */}
+      <Box sx={{ px: open ? 3 : 1.5, py: 1, textAlign: 'center' }}>
+        <Tooltip title={`Cambiar a modo ${mode === 'dark' ? 'claro' : 'oscuro'}`} placement="right">
+          <IconButton
+            onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+            sx={{
+              color: 'rgba(255,255,255,0.8)',
+              '&:hover': {
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+              },
+            }}
+          >
+            {mode === 'dark' ? <LightIcon /> : <DarkIcon />}
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Navigation Items */}
@@ -177,18 +219,32 @@ const Sidebar = () => {
                 >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: isActive(item.path) ? 'bold' : 'medium',
-                    fontSize: '0.95rem',
-                  }}
-                  sx={{
-                    '& .MuiListItemText-primary': {
-                      color: isActive(item.path) ? 'white' : 'rgba(255,255,255,0.9)',
-                    },
-                  }}
-                />
+                {open ? (
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontWeight: isActive(item.path) ? 'bold' : 'medium',
+                      fontSize: '0.95rem',
+                    }}
+                    sx={{
+                      '& .MuiListItemText-primary': {
+                        color: isActive(item.path) ? 'white' : 'rgba(255,255,255,0.9)',
+                      },
+                      opacity: open ? 1 : 0,
+                      transform: open ? 'translateX(0)' : 'translateX(-20px)',
+                      transition: 'all 0.3s ease-in-out',
+                      pointerEvents: open ? 'auto' : 'none',
+                    }}
+                  />
+                ) : (
+                  <ListItemText
+                    sx={{
+                      opacity: 0,
+                      width: 0,
+                      transition: 'all 0.3s ease-in-out',
+                    }}
+                  />
+                )}
                 {item.badge && (
                   <Box
                     sx={{
@@ -212,16 +268,32 @@ const Sidebar = () => {
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.1)', mx: 2 }} />
 
       {/* User Info & Logout */}
-      <Box sx={{ p: 2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: 2,
-            bgcolor: 'rgba(255,255,255,0.08)',
-            mb: 1,
-          }}
+      <Box sx={{
+        p: 2,
+        opacity: open ? 1 : 0,
+        transform: open ? 'translateY(0)' : 'translateY(20px)',
+        transition: 'all 0.3s ease-in-out',
+        pointerEvents: open ? 'auto' : 'none',
+        position: open ? 'relative' : 'absolute',
+        width: '100%',
+      }}>
+        <Tooltip title="Ir al perfil" placement="top" arrow>
+          <Box
+            onClick={() => navigate('/perfil')}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: 'rgba(255,255,255,0.08)',
+              mb: 1,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.15)',
+                transform: 'scale(1.02)',
+              },
+            }}
         >
           <Avatar
             sx={{
@@ -260,6 +332,7 @@ const Sidebar = () => {
             </Typography>
           </Box>
         </Box>
+        </Tooltip>
         
         <Tooltip title="Cerrar sesión" placement="top" arrow>
           <Box

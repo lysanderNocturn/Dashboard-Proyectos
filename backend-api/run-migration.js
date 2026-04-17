@@ -18,12 +18,13 @@ const pool = new Pool({
 
 async function runMigration() {
   try {
-    console.log('Leyendo archivo de migración...');
-    const sql = readFileSync(join(__dirname, 'database/migration_v3.sql'), 'utf-8');
-    
+    const migrationFile = process.argv[2] || 'migration_v5.sql';
+    console.log(`Leyendo archivo de migración: ${migrationFile}...`);
+    const sql = readFileSync(join(__dirname, 'database', migrationFile), 'utf-8');
+
     console.log('Ejecutando migración...');
     await pool.query(sql);
-    
+
     console.log('¡Migración completada exitosamente!');
   } catch (error) {
     console.error('Error al ejecutar migración:', error.message);

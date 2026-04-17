@@ -1,11 +1,11 @@
 import { pool } from "../db.js";
 
-// Helper function to safely parse trimestres
-const safeTrimestres = (trimestres) => {
-  if (!trimestres) return [];
-  if (Array.isArray(trimestres)) return trimestres;
+// Helper function to safely parse actividades
+const safeActividades = (actividades) => {
+  if (!actividades) return [];
+  if (Array.isArray(actividades)) return actividades;
   try {
-    return JSON.parse(trimestres);
+    return JSON.parse(actividades);
   } catch {
     return [];
   }
@@ -24,26 +24,13 @@ export const getProyectos = async (req, res) => {
     
     // Optimized: Use a single query with LEFT JOIN to avoid N+1 query problem
     const { rows } = await pool.query(`
-      SELECT p.*, 
+      SELECT p.*,
              pr.monto as presupuesto_monto, pr.ano as presupuesto_ano,
-             u.nombre as unidad_nombre, d.nombre as departamento_nombre,
-             COALESCE(
-               json_agg(
-                 DISTINCT jsonb_build_object(
-                   'ano', pt.ano,
-                   'trimestre', pt.trimestre,
-                   'meta', pt.meta,
-                   'porcentaje', pt.porcentaje
-                 )
-               ) FILTER (WHERE pt.id IS NOT NULL),
-               '[]'
-             ) as trimestres
+             u.nombre as unidad_nombre, d.nombre as departamento_nombre
       FROM proyectos p
       LEFT JOIN presupuestos pr ON p.presupuesto_id = pr.id
       LEFT JOIN unidad_administrativa u ON p.unidad_administrativa_id = u.id
       LEFT JOIN departamentos d ON p.departamento_id = d.id
-      LEFT JOIN proyectos_trimestres pt ON p.id = pt.proyecto_id
-      GROUP BY p.id, pr.monto, pr.ano, u.nombre, d.nombre
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
@@ -68,27 +55,14 @@ export const getProyectoById = async (req, res) => {
     const { id } = req.params;
     // Optimized: Single query with JOIN instead of N+1
     const { rows } = await pool.query(`
-      SELECT p.*, 
+      SELECT p.*,
              pr.monto as presupuesto_monto, pr.ano as presupuesto_ano,
-             u.nombre as unidad_nombre, d.nombre as departamento_nombre,
-             COALESCE(
-               json_agg(
-                 DISTINCT jsonb_build_object(
-                   'ano', pt.ano,
-                   'trimestre', pt.trimestre,
-                   'meta', pt.meta,
-                   'porcentaje', pt.porcentaje
-                 )
-               ) FILTER (WHERE pt.id IS NOT NULL),
-               '[]'
-             ) as trimestres
+             u.nombre as unidad_nombre, d.nombre as departamento_nombre
       FROM proyectos p
       LEFT JOIN presupuestos pr ON p.presupuesto_id = pr.id
       LEFT JOIN unidad_administrativa u ON p.unidad_administrativa_id = u.id
       LEFT JOIN departamentos d ON p.departamento_id = d.id
-      LEFT JOIN proyectos_trimestres pt ON p.id = pt.proyecto_id
       WHERE p.id = $1
-      GROUP BY p.id, pr.monto, pr.ano, u.nombre, d.nombre
     `, [id]);
     
     if (rows.length === 0) {
@@ -123,17 +97,14 @@ export const createProyecto = async (req, res) => {
     // Add new fields if they exist in the database
     const optionalFields = [
       { name: 'objetivo', value: data.objetivo },
-      { name: 'meta_total', value: data.meta_total || 100 },
-      { name: 'duracion_anos', value: data.duracion_anos || 1 },
-      { name: 'medida_tipo', value: data.medida_tipo || 'porcentaje' },
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
       { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
       { name: 'presupuesto_id', value: data.presupuesto_id || null },
+      { name: 'presupuesto_total', value: data.presupuesto_total || null },
+      { name: 'actividades', value: JSON.stringify(safeActividades(data.actividades)) },
       { name: 'unidad_administrativa_id', value: data.unidad_administrativa_id || null },
       { name: 'departamento_id', value: data.departamento_id || null },
       { name: 'ejes_id', value: data.ejes_id || null },
-      { name: 'accion_id', value: data.accion_id || null },
-      { name: 'medida_id', value: data.medida_id || null },
     ];
     
     for (const field of optionalFields) {
@@ -150,33 +121,13 @@ export const createProyecto = async (req, res) => {
     
     const proyectoResult = await client.query(query, values);
     const proyecto = proyectoResult.rows[0];
-    
-    // Insert trimestres if provided
-    const trimestres = safeTrimestres(data.trimestres);
-    if (trimestres.length > 0) {
-      for (const trimestre of trimestres) {
-        try {
-          await client.query(
-            `INSERT INTO proyectos_trimestres (proyecto_id, ano, trimestre, meta, porcentaje)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [proyecto.id, trimestre.ano, trimestre.trimestre, trimestre.meta || 0, trimestre.porcentaje || 0]
-          );
-        } catch (err) {
-          console.error('Error al insertar trimestre:', err);
-          // Continue even if one trimestre fails
-        }
-      }
-    }
-    
+
     await client.query('COMMIT');
-    
-    // Get the proyecto with trimestres
-    const { rows: trimestresRows } = await pool.query(
-      'SELECT ano, trimestre, meta, porcentaje FROM proyectos_trimestres WHERE proyecto_id = $1 ORDER BY ano, trimestre',
-      [proyecto.id]
-    );
-    
-    res.status(201).json({ ...proyecto, trimestres: trimestresRows || [] });
+
+    // Parse actividades back to array for response
+    const actividades = safeActividades(proyecto.actividades);
+
+    res.status(201).json({ ...proyecto, actividades });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al crear proyecto:', error);
@@ -225,17 +176,14 @@ export const updateProyecto = async (req, res) => {
       { name: 'estado_actual', value: data.estado_actual },
       { name: 'evaluacion', value: data.evaluacion },
       { name: 'objetivo', value: data.objetivo },
-      { name: 'meta_total', value: data.meta_total },
-      { name: 'duracion_anos', value: data.duracion_anos },
-      { name: 'medida_tipo', value: data.medida_tipo },
       { name: 'fecha_inicio', value: data.fecha_inicio === '' ? null : data.fecha_inicio },
       { name: 'fecha_fin', value: data.fecha_fin === '' ? null : data.fecha_fin },
       { name: 'presupuesto_id', value: data.presupuesto_id || null },
+      { name: 'presupuesto_total', value: data.presupuesto_total || null },
+      { name: 'actividades', value: JSON.stringify(safeActividades(data.actividades)) },
       { name: 'unidad_administrativa_id', value: data.unidad_administrativa_id || null },
       { name: 'departamento_id', value: data.departamento_id || null },
       { name: 'ejes_id', value: data.ejes_id || null },
-      { name: 'accion_id', value: data.accion_id || null },
-      { name: 'medida_id', value: data.medida_id || null },
     ];
     
     for (const field of fields) {
@@ -265,36 +213,13 @@ export const updateProyecto = async (req, res) => {
     }
     
     const proyecto = rows[0];
-    
-    // Update trimestres if provided
-    const trimestres = safeTrimestres(data.trimestres);
-    if (trimestres.length > 0) {
-      // Delete existing trimestres
-      await client.query('DELETE FROM proyectos_trimestres WHERE proyecto_id = $1', [id]);
-      
-      // Insert new trimestres
-      for (const trimestre of trimestres) {
-        try {
-          await client.query(
-            `INSERT INTO proyectos_trimestres (proyecto_id, ano, trimestre, meta, porcentaje)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [id, trimestre.ano, trimestre.trimestre, trimestre.meta || 0, trimestre.porcentaje || 0]
-          );
-        } catch (err) {
-          console.error('Error al insertar trimestre:', err);
-        }
-      }
-    }
-    
+
     await client.query('COMMIT');
-    
-    // Get updated proyecto with trimestres
-    const { rows: trimestresRows } = await pool.query(
-      'SELECT ano, trimestre, meta, porcentaje FROM proyectos_trimestres WHERE proyecto_id = $1 ORDER BY ano, trimestre',
-      [id]
-    );
-    
-    res.json({ ...proyecto, trimestres: trimestresRows || [] });
+
+    // Parse actividades back to array for response
+    const actividades = safeActividades(proyecto.actividades);
+
+    res.json({ ...proyecto, actividades });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al actualizar proyecto:', error);

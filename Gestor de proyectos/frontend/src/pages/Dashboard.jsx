@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Cell } from 'recharts';
 import { proyectosService } from '../services/proyectosService.js';
 import {
   Box,
@@ -101,6 +102,14 @@ const Dashboard = () => {
   }, [proyectos]);
   
   const { proyectosActivos, proyectosCompletados, proyectosPendientes, promedioProgreso } = stats;
+
+  const chartData = [
+    { name: 'Activo', value: proyectosActivos, color: '#11998e' },
+    { name: 'En Progreso', value: proyectos.filter(p => p.estado_actual === 'En Progreso').length, color: '#4facfe' },
+    { name: 'Pendiente', value: proyectosPendientes, color: '#f59e0b' },
+    { name: 'Completado', value: proyectosCompletados, color: '#10b981' },
+    { name: 'Cancelado', value: proyectos.filter(p => p.estado_actual === 'Cancelado').length, color: '#ef4444' }
+  ];
 
   const statCards = [
     { 
@@ -227,21 +236,21 @@ const Dashboard = () => {
           {statCards.map((stat, index) => (
             <Grid item xs={12} sm={6} md={3} key={stat.title}>
               <Zoom in style={{ transitionDelay: `${index * 100}ms` }}>
-                <Card 
-                  sx={{ 
-                    borderRadius: 4, 
-                    background: stat.gradient, 
-                    color: 'white', 
-                    transition: 'all 0.3s ease', 
+                <Card
+                  sx={{
+                    borderRadius: 4,
+                    background: stat.gradient,
+                    color: 'white',
+                    transition: 'all 0.3s ease',
                     position: 'relative',
                     overflow: 'hidden',
                     minHeight: 180,
-                    '&:hover': { 
-                      transform: 'translateY(-8px)', 
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
                       boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
                       '& .stat-icon': { transform: 'scale(1.2) rotate(5deg)' },
                       '& .stat-badge': { opacity: 1, transform: 'scale(1)' }
-                    } 
+                    }
                   }}
                 >
                   {/* Decorative circle */}
@@ -265,11 +274,11 @@ const Dashboard = () => {
                   }} />
                   <CardContent sx={{ p: 3, position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Avatar 
+                      <Avatar
                         className="stat-icon"
-                        sx={{ 
-                          bgcolor: 'rgba(255,255,255,0.25)', 
-                          width: 56, 
+                        sx={{
+                          bgcolor: 'rgba(255,255,255,0.25)',
+                          width: 56,
                           height: 56,
                           transition: 'transform 0.3s ease',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
@@ -277,7 +286,7 @@ const Dashboard = () => {
                       >
                         {stat.icon}
                       </Avatar>
-                      <Box 
+                      <Box
                         className="stat-badge"
                         sx={{
                           opacity: 0.7,
@@ -305,6 +314,47 @@ const Dashboard = () => {
               </Zoom>
             </Grid>
           ))}
+        </Grid>
+
+        {/* Charts */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={2} sx={{ p: 3, borderRadius: 4 }}>
+              <Typography variant="h6" gutterBottom fontWeight="bold">Distribución por Estado</Typography>
+              <Box sx={{ height: 300 }}>
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={chartData}
+                    cx={200}
+                    cy={150}
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </PieChart>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={2} sx={{ p: 3, borderRadius: 4 }}>
+              <Typography variant="h6" gutterBottom fontWeight="bold">Proyectos por Estado</Typography>
+              <Box sx={{ height: 300 }}>
+                <BarChart width={400} height={300} data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Bar dataKey="value" fill="#800020" />
+                </BarChart>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
 
         {/* Projects Table & Summary */}
